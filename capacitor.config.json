@@ -1,0 +1,6 @@
+{
+  "appId": "com.kasircubic.app",
+  "appName": "Kasir Cubic",
+  "webDir": "dist",
+  "bundledWebRuntime": false
+}

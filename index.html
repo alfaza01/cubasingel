@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Kasir Cuba</title>
+    <!-- Pendaftaran Manifest KASIR CUBA -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#1e3a8a">
+    <!-- Favicon Browser Tab -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/icons/icon-16x16.png">
+    <link rel="shortcut icon" href="/icons/icon-32x32.png">
+
+    <!-- Dukungan untuk iOS (iPhone/iPad) -->
+    <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152x152.png">
+    <link rel="apple-touch-icon" sizes="192x192" href="/icons/icon-192x192.png">
+    <meta name="apple-mobile-web-app-title" content="Kasir Cuba">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+      // Early capture of standard and custom browser PWA parameters
+      window.deferredPrompt = window.deferredPrompt || null;
+      window.isPWAInstalled = window.matchMedia('(display-mode: standalone)').matches || !!navigator.standalone;
+
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        window.deferredPrompt = e;
+        console.log('⚡ PWA is ready for installation. beforeinstallprompt intercepted.');
+        // Dispatch instant event in case components are active
+        window.dispatchEvent(new CustomEvent('pwa-prompt-captured', { detail: e }));
+      });
+
+      window.addEventListener('appinstalled', (e) => {
+        console.log('🎉 PWA Installed Successfully!');
+        window.isPWAInstalled = true;
+        window.dispatchEvent(new CustomEvent('pwa-install-completed'));
+      });
+
+      // Automatic cache recovery script if chunks fail or the screen is blank due to stale sw
+      window.addEventListener('error', function (e) {
+        const target = e.target;
+        if (target && (target.tagName === 'SCRIPT' || target.tagName === 'LINK')) {
+          console.error('⚠️ Critical assets load failure detected! Triggering deep self-repair...', target.src || target.href);
+          selfRepairAndReload();
+        }
+      }, true);
+
+      // Timeout safety repair: If React has not mounted the root element after 3 seconds, perform recovery.
+      setTimeout(function() {
+        if (!window.__APP_MOUNTED__) {
+          console.warn('⚠️ App failed to mount within 3 seconds. Cleaning stale assets...');
+          selfRepairAndReload();
+        }
+      }, 3000);
+
+      function selfRepairAndReload() {
+        // Prevent infinite reload loops by setting a cooldown flag in sessionStorage
+        const lastRepair = sessionStorage.getItem('pwa_auto_repair_time');
+        const now = Date.now();
+        if (lastRepair && now - parseInt(lastRepair, 10) < 8000) {
+          console.error('❌ Self-repair loop prevention matched. Keeping screen static.');
+          return;
+        }
+        sessionStorage.setItem('pwa_auto_repair_time', now.toString());
+
+        console.log('🔄 Initiating cache purge and service worker cleanup...');
+        
+        let actions = [];
+        
+        // 1. Purge all CacheStorage
+        if ('caches' in window) {
+          actions.push(
+            caches.keys().then(function (names) {
+              return Promise.all(names.map(function (name) {
+                return caches.delete(name);
+              }));
+            })
+          );
+        }
+
+        // 2. Unregister Service Workers
+        if ('serviceWorker' in navigator) {
+          actions.push(
+            navigator.serviceWorker.getRegistrations().then(function (regs) {
+              return Promise.all(regs.map(function (reg) {
+                return reg.unregister();
+              }));
+            })
+          );
+        }
+
+        Promise.all(actions).finally(function() {
+          console.log('🚀 Cleanup done. Performing hard reload with anti-cache parameters.');
+          const cleanUrl = window.location.origin + window.location.pathname + '?bypass_cache=' + Date.now();
+          window.location.replace(cleanUrl);
+        });
+      }
+
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+
+    <!-- Script Registrasi Service Worker KASIR CUBA -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then(registration => {
+              console.log('KASIR CUBA: Service Worker berhasil didaftarkan!', registration.scope);
+            })
+            .catch(err => {
+              console.error('KASIR CUBA: Pendaftaran Service Worker gagal!', err);
+            });
+        });
+      }
+    </script>
+  </body>
+</html>
+

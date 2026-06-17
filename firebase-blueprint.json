@@ -1,0 +1,123 @@
+{
+  "entities": {
+    "storageItem": {
+      "title": "Storage Item",
+      "description": "A single localStorage key-value pair synced from the client.",
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "type": "string"
+        }
+      },
+      "required": ["value"]
+    },
+    "globalSettings": {
+      "title": "Global Settings",
+      "description": "Global application properties like operational WhatsApp contact details.",
+      "type": "object",
+      "properties": {
+        "whatsappNumber": {
+          "type": "string"
+        }
+      },
+      "required": ["whatsappNumber"]
+    },
+    "license": {
+      "title": "License Code",
+      "description": "Stores user activation lifetime license codes.",
+      "type": "object",
+      "properties": {
+        "code": { "type": "string" },
+        "assignedEmail": { "type": "string" },
+        "used": { "type": "boolean" },
+        "usedBy": { "type": "string" },
+        "usedByEmail": { "type": "string" },
+        "usedAt": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "referralCodeUsed": { "type": "string" }
+      },
+      "required": ["code", "used", "createdAt"]
+    },
+    "referral": {
+      "title": "Referral",
+      "description": "Tracks referrers' codes, accumulated points, and registration details.",
+      "type": "object",
+      "properties": {
+        "code": { "type": "string" },
+        "ownerUid": { "type": "string" },
+        "ownerEmail": { "type": "string" },
+        "pointsAccumulated": { "type": "number" },
+        "pointsWithdrawn": { "type": "number" },
+        "pointsCurrent": { "type": "number" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["code", "ownerUid", "pointsAccumulated", "pointsWithdrawn", "pointsCurrent", "createdAt"]
+    },
+    "referralWithdrawal": {
+      "title": "Referral Withdrawal",
+      "description": "Tracks payout/cashout requests submitted by affiliates.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "ownerUid": { "type": "string" },
+        "ownerEmail": { "type": "string" },
+        "referralCode": { "type": "string" },
+        "amount": { "type": "number" },
+        "paymentMethod": { "type": "string" },
+        "paymentDetails": { "type": "string" },
+        "status": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" },
+        "completedAt": { "type": "string" },
+        "receiptNo": { "type": "string" },
+        "rejectReason": { "type": "string" }
+      },
+      "required": ["id", "ownerUid", "referralCode", "amount", "paymentMethod", "status", "createdAt", "updatedAt"]
+    },
+    "referralHistory": {
+      "title": "Referral History",
+      "description": "Logs when an end-user activates using another affiliate's referral code.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "referralCode": { "type": "string" },
+        "ownerUid": { "type": "string" },
+        "ownerEmail": { "type": "string" },
+        "referredUserUid": { "type": "string" },
+        "referredUserEmail": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "pointsRewarded": { "type": "number" }
+      },
+      "required": ["id", "referralCode", "ownerUid", "referredUserUid", "createdAt", "pointsRewarded"]
+    }
+  },
+  "firestore": {
+    "users/{userId}/storage/{storageKey}": {
+      "schema": "storageItem",
+      "description": "Stores user's offline and synced key-value data."
+    },
+    "settings/{docId}": {
+      "schema": "globalSettings",
+      "description": "Holds system configurations."
+    },
+    "licenses/{licenseId}": {
+      "schema": "license",
+      "description": "Lists activation licenses."
+    },
+    "referrals/{code}": {
+      "schema": "referral",
+      "description": "Tracks client-affiliated marketing portfolios."
+    },
+    "referral_withdrawals/{withdrawalId}": {
+      "schema": "referralWithdrawal",
+      "description": "Handles commission withdrawal records."
+    },
+    "referral_history/{historyId}": {
+      "schema": "referralHistory",
+      "description": "Tracks history entries for referrals."
+    }
+  }
+}

@@ -1,0 +1,192 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 1. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (request.auth.token.email == "alfaza00001@gmail.com" || request.auth.token.email == "elmudzie@gmail.com");
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    // Validation definitions
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidStorageItem(data) {
+      return data.keys().hasAll(['value'])
+        && data.value is string
+        && (!('updatedAt' in data) || data.updatedAt == request.time || data.updatedAt is string || data.updatedAt == null);
+    }
+
+    function isValidGlobalSettings(data) {
+      return data.keys().hasAll(['whatsappNumber'])
+        && data.whatsappNumber is string && data.whatsappNumber.size() <= 32;
+    }
+
+    function isValidLicense(data) {
+      return data.keys().hasAll(['code', 'used', 'createdAt'])
+        && data.code is string && data.code.size() <= 100
+        && data.used is bool
+        && (data.assignedEmail == null || data.assignedEmail is string)
+        && (data.usedBy == null || data.usedBy is string)
+        && (data.usedByEmail == null || data.usedByEmail is string)
+        && (data.usedAt == null || data.usedAt == request.time || data.usedAt is timestamp)
+        && (data.createdAt == request.time || data.createdAt is timestamp)
+        && (!('referralCodeUsed' in data) || data.referralCodeUsed == null || data.referralCodeUsed is string);
+    }
+
+    function isValidReferral(data) {
+      return data.keys().hasAll(['code', 'ownerUid', 'pointsAccumulated', 'pointsWithdrawn', 'pointsCurrent', 'createdAt'])
+        && data.code is string && data.code.size() <= 50
+        && data.ownerUid is string && data.ownerUid.size() <= 128
+        && (!('ownerEmail' in data) || data.ownerEmail == null || data.ownerEmail is string && data.ownerEmail.size() <= 200)
+        && data.pointsAccumulated is number
+        && data.pointsWithdrawn is number
+        && data.pointsCurrent is number
+        && (data.createdAt == request.time || data.createdAt is timestamp);
+    }
+
+    function isValidReferralWithdrawal(data) {
+      return data.keys().hasAll(['id', 'ownerUid', 'referralCode', 'amount', 'paymentMethod', 'paymentDetails', 'status', 'createdAt', 'updatedAt'])
+        && data.id is string && data.id.size() <= 128
+        && data.ownerUid is string && data.ownerUid.size() <= 128
+        && (!('ownerEmail' in data) || data.ownerEmail == null || data.ownerEmail is string && data.ownerEmail.size() <= 200)
+        && data.referralCode is string && data.referralCode.size() <= 50
+        && data.amount is number
+        && data.paymentMethod is string && data.paymentMethod.size() <= 50
+        && data.paymentDetails is string && data.paymentDetails.size() <= 500
+        && data.status is string && data.status.size() <= 20
+        && (data.createdAt == request.time || data.createdAt is timestamp)
+        && (data.updatedAt == request.time || data.updatedAt is timestamp)
+        && (!('completedAt' in data) || data.completedAt == null || data.completedAt is timestamp || data.completedAt == request.time)
+        && (!('receiptNo' in data) || data.receiptNo == null || data.receiptNo is string)
+        && (!('rejectReason' in data) || data.rejectReason == null || data.rejectReason is string);
+    }
+
+    function isValidReferralHistory(data) {
+      return data.keys().hasAll(['id', 'referralCode', 'ownerUid', 'referredUserUid', 'createdAt', 'pointsRewarded'])
+        && data.id is string && data.id.size() <= 128
+        && data.referralCode is string && data.referralCode.size() <= 50
+        && data.ownerUid is string && data.ownerUid.size() <= 128
+        && (!('ownerEmail' in data) || data.ownerEmail == null || data.ownerEmail is string && data.ownerEmail.size() <= 200)
+        && data.referredUserUid is string && data.referredUserUid.size() <= 128
+        && (!('referredUserEmail' in data) || data.referredUserEmail == null || data.referredUserEmail is string && data.referredUserEmail.size() <= 200)
+        && (data.createdAt == request.time || data.createdAt is timestamp)
+        && data.pointsRewarded is number;
+    }
+
+
+    // 2. Storage Sync Rules
+    match /users/{userId}/storage/{storageKey} {
+      allow read: if isOwner(userId);
+      allow write: if isOwner(userId) && isValidStorageItem(incoming());
+    }
+
+    // 3. User Reports
+    match /users/{userId}/reports/{reportId} {
+      allow read, write: if isOwner(userId);
+    }
+
+    // 4. POS Products
+    match /pos_products/{productId} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    // 5. Global Settings
+    match /settings/{docId} {
+      allow read: if true;
+      allow write: if isAdmin() && isValidGlobalSettings(incoming());
+    }
+
+    // 6. Licenses Collection
+    match /licenses/{licenseId} {
+      allow read: if isSignedIn();
+      allow create, delete: if isAdmin() && isValidLicense(incoming());
+      
+      allow update: if (isAdmin() && isValidLicense(incoming()))
+                    || (
+                         isSignedIn() 
+                         && isValidLicense(incoming())
+                         && existing().used == false 
+                         && incoming().used == true 
+                         && incoming().usedBy == request.auth.uid
+                         && incoming().usedByEmail == request.auth.token.email
+                         && incoming().diff(existing()).affectedKeys()
+                             .hasOnly(['used', 'usedBy', 'usedAt', 'usedByEmail', 'referralCodeUsed'])
+                       );
+    }
+
+    // 7. Referrals Collection
+    match /referrals/{code} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn() && existing().ownerUid == request.auth.uid;
+      
+      allow create: if isSignedIn() 
+                    && incoming().ownerUid == request.auth.uid 
+                    && (!('ownerEmail' in incoming()) || incoming().ownerEmail == request.auth.token.email || incoming().ownerEmail is string)
+                    && incoming().pointsAccumulated == 0
+                    && incoming().pointsWithdrawn == 0
+                    && incoming().pointsCurrent == 0
+                    && isValidReferral(incoming());
+                    
+      allow update: if (isAdmin() && isValidReferral(incoming()))
+                    || (
+                         isSignedIn()
+                         && isOwner(existing().ownerUid)
+                         && isValidReferral(incoming())
+                         && incoming().diff(existing()).affectedKeys().hasOnly(['pointsCurrent'])
+                         && incoming().pointsCurrent <= existing().pointsCurrent
+                       )
+                    || (
+                         isSignedIn()
+                         && isValidReferral(incoming())
+                         && incoming().diff(existing()).affectedKeys().hasOnly(['pointsAccumulated', 'pointsCurrent'])
+                         && incoming().pointsAccumulated == existing().pointsAccumulated + 10000
+                         && incoming().pointsCurrent == existing().pointsCurrent + 10000
+                       );
+    }
+
+    // 8. Referral Withdrawals
+    match /referral_withdrawals/{withdrawalId} {
+      allow read: if isAdmin() || (isSignedIn() && existing().ownerUid == request.auth.uid);
+      
+      allow create: if isSignedIn()
+                    && incoming().ownerUid == request.auth.uid
+                    && (!('ownerEmail' in incoming()) || incoming().ownerEmail == request.auth.token.email || incoming().ownerEmail is string)
+                    && incoming().status == 'PENDING'
+                    && isValidReferralWithdrawal(incoming());
+                    
+      allow update: if isAdmin() && isValidReferralWithdrawal(incoming());
+      allow delete: if false;
+    }
+
+    // 9. Referral History
+    match /referral_history/{historyId} {
+      allow read: if isAdmin() || (isSignedIn() && (existing().ownerUid == request.auth.uid || existing().referredUserUid == request.auth.uid));
+      
+      allow create: if isSignedIn()
+                    && incoming().referredUserUid == request.auth.uid
+                    && incoming().referredUserEmail == request.auth.token.email
+                    && isValidReferralHistory(incoming());
+                    
+      allow update, delete: if false;
+    }
+  }
+}

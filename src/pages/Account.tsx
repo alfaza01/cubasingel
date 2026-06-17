@@ -130,9 +130,22 @@ export function Account() {
   const [saveStatusAnnouncement, setSaveStatusAnnouncement] = useState(false);
   const [saveStatusPresets, setSaveStatusPresets] = useState<Record<string, boolean>>({});
 
-  // States for Bluetooth simulator
+  // States for Native Bluetooth via Capacitor
   const [btConnected, setBtConnected] = useState(false);
   const [btConnecting, setBtConnecting] = useState(false);
+  const [pairedDevices, setPairedDevices] = useState<any[]>([]);
+  const [btMacAddress, setBtMacAddress] = useState<string | null>(localStorage.getItem('bluetooth_printer_mac'));
+  const [isScanningBt, setIsScanningBt] = useState(false);
+
+  // Periksa koneksi awal jika ada MAC address tersimpan
+  useEffect(() => {
+    if (btMacAddress && (window as any).bluetoothSerial) {
+      (window as any).bluetoothSerial.isConnected(
+        () => setBtConnected(true),
+        () => setBtConnected(false)
+      );
+    }
+  }, [btMacAddress]);
 
   // License & Admin States
   const { user, logout } = useAuth();
@@ -480,17 +493,51 @@ export function Account() {
     }
   };
 
-  // Simulated Bluetooth toggle
-  const toggleBluetoothDevice = () => {
-    if (btConnected) {
-      setBtConnected(false);
-    } else {
-      setBtConnecting(true);
-      setTimeout(() => {
-        setBtConnecting(false);
-        setBtConnected(true);
-      }, 1500);
+  // Native Bluetooth scanning and connection logic
+  const scanBluetoothDevices = () => {
+    if (!(window as any).bluetoothSerial) {
+      alert('Bluetooth Native tidak tersedia. Pastikan Anda menjalankan aplikasi via APK Android.');
+      return;
     }
+    setIsScanningBt(true);
+    (window as any).bluetoothSerial.list(
+      (devices: any[]) => {
+        setPairedDevices(devices);
+        setIsScanningBt(false);
+      },
+      (error: any) => {
+        alert('Gagal mengambil daftar Bluetooth: ' + error);
+        setIsScanningBt(false);
+      }
+    );
+  };
+
+  const connectToBluetooth = (macAddress: string) => {
+    setBtConnecting(true);
+    (window as any).bluetoothSerial.connect(
+      macAddress,
+      () => {
+        setBtConnected(true);
+        setBtConnecting(false);
+        setBtMacAddress(macAddress);
+        localStorage.setItem('bluetooth_printer_mac', macAddress);
+        alert('Printer berhasil terhubung!');
+      },
+      (error: any) => {
+        setBtConnected(false);
+        setBtConnecting(false);
+        alert('Gagal terhubung ke printer: ' + error);
+      }
+    );
+  };
+
+  const disconnectBluetooth = () => {
+    if (!(window as any).bluetoothSerial) return;
+    (window as any).bluetoothSerial.disconnect(() => {
+      setBtConnected(false);
+      setBtMacAddress(null);
+      localStorage.removeItem('bluetooth_printer_mac');
+    });
   };
 
   // Helper formatting to rupiah
@@ -1393,29 +1440,54 @@ export function Account() {
            <div className="p-4.5 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-800">
               <p className="text-[9px] text-slate-400 font-bold mb-3 uppercase">Konfigurasi hardware thermal struk kasir.</p>
               <div className="space-y-3.5">
-                <div className="flex justify-between items-center p-3 bg-slate-50/80 border border-slate-250/50 rounded-xl">
-                   <div className="flex items-center gap-2.5">
-                      <div className={`w-3 h-3 rounded-full animate-pulse ${btConnected ? 'bg-emerald-500' : btConnecting ? 'bg-amber-400' : 'bg-red-500'}`}></div>
-                      <div>
-                         <p className="text-[11px] font-extrabold text-slate-800 dark:text-slate-100 uppercase">PRINTER THERMAL 58MM</p>
-                         <p className="text-[8px] text-slate-400 font-bold uppercase mt-0.5">
-                           STATUS: {btConnected ? 'TERHUBUNG (ID: POS-80-BT)' : btConnecting ? 'MENYAMBUNGKAN...' : 'DISCONNECTED'}
-                         </p>
+                <div className="flex flex-col gap-3 p-3 bg-slate-50/80 border border-slate-250/50 rounded-xl">
+                   <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-2.5">
+                         <div className={`w-3 h-3 rounded-full animate-pulse ${btConnected ? 'bg-emerald-500' : btConnecting ? 'bg-amber-400' : 'bg-red-500'}`}></div>
+                         <div>
+                            <p className="text-[11px] font-extrabold text-slate-800 dark:text-slate-100 uppercase">PRINTER BLUETOOTH NATIVE</p>
+                            <p className="text-[8px] text-slate-400 font-bold uppercase mt-0.5">
+                              STATUS: {btConnected ? `TERHUBUNG (${btMacAddress})` : btConnecting ? 'MENYAMBUNGKAN...' : 'DISCONNECTED'}
+                            </p>
+                         </div>
                       </div>
+                      <button 
+                        type="button"
+                        onClick={btConnected ? disconnectBluetooth : scanBluetoothDevices}
+                        disabled={btConnecting || isScanningBt}
+                        className={`text-[9px] font-black px-3 py-1.5 rounded-lg active:scale-95 transition-all shadow-sm cursor-pointer
+                          ${btConnected 
+                            ? 'bg-rose-50 border border-rose-200 text-rose-600 font-bold' 
+                            : 'bg-blue-600 text-white hover:bg-blue-700'
+                          }
+                        `}
+                      >
+                         {btConnected ? 'PUTUSKAN' : isScanningBt ? 'MENCARI...' : 'CARI PRINTER'}
+                      </button>
                    </div>
-                   <button 
-                     type="button"
-                     onClick={toggleBluetoothDevice}
-                     disabled={btConnecting}
-                     className={`text-[9px] font-black px-3 py-1.5 rounded-lg active:scale-95 transition-all shadow-sm cursor-pointer
-                       ${btConnected 
-                         ? 'bg-rose-50 border border-rose-200 text-rose-600 font-bold' 
-                         : 'bg-blue-600 text-white hover:bg-blue-700'
-                       }
-                     `}
-                   >
-                      {btConnected ? 'PUTUSKAN' : btConnecting ? 'SINKRON...' : 'HUBUNGKAN'}
-                   </button>
+                   
+                   {/* Device List Container */}
+                   {!btConnected && pairedDevices.length > 0 && (
+                     <div className="mt-2 border-t border-slate-200 dark:border-slate-700 pt-2">
+                       <p className="text-[9px] font-bold text-slate-500 mb-2">PILIH PRINTER YANG TERSEDIA:</p>
+                       <div className="space-y-2 max-h-[150px] overflow-y-auto">
+                         {pairedDevices.map((device) => (
+                           <button
+                             key={device.address}
+                             onClick={() => connectToBluetooth(device.address)}
+                             disabled={btConnecting}
+                             className="w-full flex items-center justify-between p-2.5 bg-white border border-slate-200 rounded-lg hover:border-blue-400 active:bg-blue-50 transition-colors text-left"
+                           >
+                             <div>
+                               <p className="text-[10px] font-bold text-slate-800">{device.name || 'Unknown Device'}</p>
+                               <p className="text-[8px] font-mono text-slate-400">{device.address}</p>
+                             </div>
+                             <span className="text-[9px] font-black text-blue-600 bg-blue-50 px-2 py-1 rounded">HUBUNGKAN</span>
+                           </button>
+                         ))}
+                       </div>
+                     </div>
+                   )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 text-[9px] text-slate-500 dark:text-slate-400 font-semibold uppercase">

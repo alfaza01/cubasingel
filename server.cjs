@@ -30,7 +30,7 @@ var import_dotenv = __toESM(require("dotenv"), 1);
 import_dotenv.default.config();
 async function startServer() {
   const app = (0, import_express.default)();
-  const PORT = 3e3;
+  const PORT = 3031;
   app.use(import_express.default.json({ limit: "50mb" }));
   const ai = new import_genai.GoogleGenAI({
     apiKey: process.env.GEMINI_API_KEY,

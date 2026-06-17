@@ -64,7 +64,44 @@ export class EscPosEncoder {
 
 export async function printViaWebBluetooth(data: Uint8Array) {
   try {
-    // Standard BLE Serial / Printer UUIDs
+    // 1. NATIVE BLUETOOTH (CAPACITOR / CORDOVA PLUGIN)
+    if ((window as any).bluetoothSerial) {
+      const macAddress = localStorage.getItem('bluetooth_printer_mac');
+      if (!macAddress) {
+        throw new Error('Printer belum dikonfigurasi. Silakan hubungkan printer di menu "Pengaturan Pos" terlebih dahulu.');
+      }
+
+      return new Promise((resolve, reject) => {
+        const writeData = () => {
+          (window as any).bluetoothSerial.write(
+            data.buffer, // Send as ArrayBuffer
+            () => resolve(true),
+            (err: any) => reject(new Error('Gagal mengirim data cetak: ' + err))
+          );
+        };
+
+        // Cek apakah sudah terhubung
+        (window as any).bluetoothSerial.isConnected(
+          () => {
+            writeData();
+          },
+          () => {
+            // Jika belum terhubung, coba reconnect otomatis
+            (window as any).bluetoothSerial.connect(
+              macAddress,
+              () => {
+                writeData();
+              },
+              (err: any) => {
+                reject(new Error('Gagal terhubung ulang ke printer: ' + err));
+              }
+            );
+          }
+        );
+      });
+    }
+
+    // 2. FALLBACK KE WEB BLUETOOTH (BROWSER / PWA)
     const device = await (navigator as any).bluetooth.requestDevice({
       filters: [
         { services: ['000018f0-0000-1000-8000-00805f9b34fb'] },
@@ -92,13 +129,13 @@ export async function printViaWebBluetooth(data: Uint8Array) {
     if (characteristics.length === 0) throw new Error('No characteristics found');
     
     // Typically the write characteristic supports 'writeWithoutResponse' or 'write'
-    const writeCharacteristic = characteristics.find(c => 
+    const writeCharacteristic = characteristics.find((c: any) => 
       c.properties.writeWithoutResponse || c.properties.write
     );
 
     if (!writeCharacteristic) throw new Error('No write characteristic found');
 
-    // Split data into chunks of 512 bytes to not overflow BLE MTU limits (sometimes 20, 512 is safe for some, let's use 100)
+    // Split data into chunks of 100 bytes to not overflow BLE MTU limits
     const CHUNK_SIZE = 100;
     for (let i = 0; i < data.length; i += CHUNK_SIZE) {
       const chunk = data.slice(i, i + CHUNK_SIZE);

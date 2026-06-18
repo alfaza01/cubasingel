@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+﻿import React, { useState, useEffect, useRef } from "react";
 import {
   ShieldCheck,
   Users,
@@ -909,7 +909,7 @@ export function Admin() {
                         </div>
                       </div>
                       <h2 className="font-black text-[28px] tracking-[0.05em] text-transparent bg-clip-text bg-gradient-to-b from-[#ffffff] via-[#fce49c] to-[#d4af37] leading-none mb-1 drop-shadow-md">
-                        KASIR CUBA
+                        CUBA SINGEL
                       </h2>
                       <div className="text-center">
                         <div className="bg-gradient-to-r from-transparent via-[#d4af37] to-transparent h-[1px] w-32 mx-auto mb-1 opacity-50"></div>

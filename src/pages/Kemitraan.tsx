@@ -1,12 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useStore } from '../context/StoreContext';
 import { useLicense } from '../context/LicenseContext';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router';
 import { cn } from '../lib/utils';
 import { 
-  Users, Megaphone, ChevronUp, ChevronDown, Award, Gift, Check, Copy, Wallet, ArrowLeft, ArrowRight, CheckCircle2, X
+  Users, Megaphone, ChevronUp, ChevronDown, Award, Gift, Check, Copy, Wallet, ArrowLeft, ArrowRight, CheckCircle2, X, Image as ImageIcon, Camera, Download
 } from 'lucide-react';
+import html2canvas from 'html2canvas';
 
 export function Kemitraan() {
   const navigate = useNavigate();
@@ -26,16 +27,17 @@ export function Kemitraan() {
     referralHistory,
     registerReferralCode,
     requestWithdrawal,
+    promoConfig,
   } = useLicense();
 
   // Primary Tab State
-  const [activeTab, setActiveTab] = useState<'kemitraan' | 'alat_promosi'>('kemitraan');
+  const [activeTab, setActiveTab] = useState<'kemitraan' | 'alat_promosi' | 'poster'>('kemitraan');
 
   // Filter for partner categories
   const [partnerFilter, setPartnerFilter] = useState<'all' | 'agen' | 'alat_promosi'>('all');
 
   // Local Copywriting States
-  const [copywritingCategory, setCopywritingCategory] = useState<'brilink' | 'voucher' | 'retail'>('brilink');
+  const [copywritingCategory, setCopywritingCategory] = useState<'brilink' | 'voucher' | 'retail' | 'admin_promo'>('brilink');
   const [selectedPosterTab, setSelectedPosterTab] = useState<'qna' | 'prices' | 'promo'>('qna');
 
   // Referral Registration Local States
@@ -51,6 +53,27 @@ export function Kemitraan() {
   const [showWdModal, setShowWdModal] = useState(false);
 
   const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const posterRef = useRef<HTMLDivElement>(null);
+
+  const downloadPoster = async () => {
+    if (!posterRef.current) return;
+    try {
+      const canvas = await html2canvas(posterRef.current, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: null
+      });
+      const dataUrl = canvas.toDataURL("image/png");
+      const link = document.createElement('a');
+      link.download = `Poster_Promo_${referralCode || 'Agen'}.png`;
+      link.href = dataUrl;
+      link.click();
+    } catch (err) {
+      console.error('Failed to download poster', err);
+    }
+  };
 
   const handleCopyToClipboard = (text: string, id: string) => {
     navigator.clipboard.writeText(text).then(() => {
@@ -114,24 +137,33 @@ export function Kemitraan() {
 
       {/* TABS SELECTOR */}
       <div className="px-5 mt-6 w-full max-w-lg mx-auto">
-        <div className="bg-white dark:bg-slate-800 p-1.5 rounded-2rem flex border border-slate-200 dark:border-slate-800 shadow-sm">
+        <div className="bg-white dark:bg-slate-800 p-1.5 rounded-2xl flex border border-slate-200 dark:border-slate-800 shadow-sm overflow-x-auto no-scrollbar">
           <button 
             onClick={() => setActiveTab('kemitraan')}
             className={cn(
-              "flex-1 py-3 px-2 rounded-xl flex items-center justify-center gap-2 text-[10.5px] font-black uppercase tracking-wider transition-all cursor-pointer",
+              "flex-1 min-w-[100px] py-3 px-2 rounded-xl flex items-center justify-center gap-1.5 text-[9.5px] font-black uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap",
               activeTab === 'kemitraan' ? "bg-purple-600 text-white shadow-md font-sans" : "text-slate-400 hover:text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:bg-slate-900 font-sans"
             )}
           >
-            <Award size={14} /> Kemitraan
+            <Award size={13} /> Komisi
           </button>
           <button 
             onClick={() => setActiveTab('alat_promosi')}
             className={cn(
-              "flex-1 py-3 px-2 rounded-xl flex items-center justify-center gap-2 text-[10.5px] font-black uppercase tracking-wider transition-all cursor-pointer",
+              "flex-1 min-w-[100px] py-3 px-2 rounded-xl flex items-center justify-center gap-1.5 text-[9.5px] font-black uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap",
               activeTab === 'alat_promosi' ? "bg-purple-600 text-white shadow-md font-sans" : "text-slate-400 hover:text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:bg-slate-900"
             )}
           >
-            <Megaphone size={14} /> Alat Promosi
+            <Megaphone size={13} /> Copywriting
+          </button>
+          <button 
+            onClick={() => setActiveTab('poster')}
+            className={cn(
+              "flex-1 min-w-[100px] py-3 px-2 rounded-xl flex items-center justify-center gap-1.5 text-[9.5px] font-black uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap",
+              activeTab === 'poster' ? "bg-emerald-600 text-white shadow-md font-sans border-b-2 border-emerald-400" : "text-slate-400 hover:text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:bg-slate-900 font-sans"
+            )}
+          >
+            <ImageIcon size={13} /> Poster Promo
           </button>
         </div>
       </div>
@@ -156,11 +188,11 @@ export function Kemitraan() {
                 <div className="grid grid-cols-2 gap-3 pt-2.5 border-t border-white/10 mt-1">
                   <div>
                     <span className="block text-[8px] font-bold text-purple-300 uppercase">Perujuk Memperoleh</span>
-                    <span className="font-extrabold text-[11px] text-emerald-300 font-mono">Poin Rp 10.000 / aktivasi</span>
+                    <span className="font-extrabold text-[11px] text-emerald-300 font-mono">Poin Rp {(promoConfig?.referralPoints || 10000).toLocaleString('id-ID')} / aktivasi</span>
                   </div>
                   <div>
                     <span className="block text-[8px] font-bold text-purple-300 uppercase">Pembeli Memperoleh</span>
-                    <span className="font-extrabold text-[11px] text-yellow-300 font-mono font-bold">Diskon Potongan Rp 10.000</span>
+                    <span className="font-extrabold text-[11px] text-yellow-300 font-mono font-bold">Harga Promo Jadi Rp {(promoConfig?.promoPrice || 60000).toLocaleString('id-ID')}</span>
                   </div>
                 </div>
               </div>
@@ -295,7 +327,7 @@ export function Kemitraan() {
                   </div>
 
                   <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold leading-relaxed mb-4">
-                    Setiap kali Anda merekrut 1 kasir pro baru, komisi <strong>Rp 10.000</strong> terkumpul di saldo aktif. Akumulasi minimal mencapai Rp 50.000 untuk dapat mencairkannya ke dompet digital (DANA, ShopeePay, GoPay, OVO) atau Rekening Bank.
+                    Setiap kali Anda merekrut 1 kasir pro baru, komisi <strong>Rp {(promoConfig?.referralPoints || 10000).toLocaleString('id-ID')}</strong> terkumpul di saldo aktif. Akumulasi minimal mencapai Rp 50.000 untuk dapat mencairkannya ke dompet digital (DANA, ShopeePay, GoPay, OVO) atau Rekening Bank.
                   </p>
 
                   {/* RIWAYAT PENARIKAN KOMISI LEDGER */}
@@ -495,45 +527,58 @@ export function Kemitraan() {
               <label className="block text-[9px] font-black text-slate-400 dark:text-slate-505 uppercase tracking-wider mb-2">
                 🎯 KATEGORI BISNIS / BAGIAN PEMBUKUAN ANDA:
               </label>
-              <div className="grid grid-cols-3 gap-1.5 select-none">
+              <div className="grid grid-cols-4 gap-1.5 select-none">
                 <button
                   type="button"
                   onClick={() => setCopywritingCategory('brilink')}
                   className={cn(
-                    "py-2.5 px-1 text-[9px] font-black rounded-lg transition-all text-center uppercase tracking-wide border flex flex-col items-center gap-1 cursor-pointer",
+                    "py-2.5 px-1 text-[8.5px] font-black rounded-lg transition-all text-center uppercase tracking-wide border flex flex-col items-center gap-1 cursor-pointer",
                     copywritingCategory === 'brilink'
                       ? 'bg-purple-600/10 border-purple-500/50 text-purple-700 dark:text-purple-400 font-black'
                       : 'bg-white dark:bg-slate-850 border-slate-200 dark:border-slate-800 text-slate-500 hover:text-slate-700 dark:text-slate-400'
                   )}
                 >
                   <span className="text-xs">🏦</span>
-                  <span>Agen BRILink</span>
+                  <span>BRILink</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setCopywritingCategory('voucher')}
                   className={cn(
-                    "py-2.5 px-1 text-[9px] font-black rounded-lg transition-all text-center uppercase tracking-wide border flex flex-col items-center gap-1 cursor-pointer",
+                    "py-2.5 px-1 text-[8.5px] font-black rounded-lg transition-all text-center uppercase tracking-wide border flex flex-col items-center gap-1 cursor-pointer",
                     copywritingCategory === 'voucher'
                       ? 'bg-purple-600/10 border-purple-500/50 text-purple-700 dark:text-purple-400 font-black'
                       : 'bg-white dark:bg-slate-850 border-slate-200 dark:border-slate-800 text-slate-500 hover:text-slate-700 dark:text-slate-400'
                   )}
                 >
                   <span className="text-xs">📶</span>
-                  <span>Katalog Voucher</span>
+                  <span>Voucher</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setCopywritingCategory('retail')}
                   className={cn(
-                    "py-2.5 px-1 text-[9px] font-black rounded-lg transition-all text-center uppercase tracking-wide border flex flex-col items-center gap-1 cursor-pointer",
+                    "py-2.5 px-1 text-[8.5px] font-black rounded-lg transition-all text-center uppercase tracking-wide border flex flex-col items-center gap-1 cursor-pointer",
                     copywritingCategory === 'retail'
                       ? 'bg-purple-600/10 border-purple-500/50 text-purple-700 dark:text-purple-400 font-black'
                       : 'bg-white dark:bg-slate-850 border-slate-200 dark:border-slate-800 text-slate-500 hover:text-slate-700 dark:text-slate-400'
                   )}
                 >
                   <span className="text-xs">🛒</span>
-                  <span>POS Kasir Retail</span>
+                  <span>Retail</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCopywritingCategory('admin_promo')}
+                  className={cn(
+                    "py-2.5 px-1 text-[8.5px] font-black rounded-lg transition-all text-center uppercase tracking-wide border flex flex-col items-center gap-1 cursor-pointer",
+                    copywritingCategory === 'admin_promo'
+                      ? 'bg-emerald-600/10 border-emerald-500/50 text-emerald-700 dark:text-emerald-400 font-black'
+                      : 'bg-white dark:bg-slate-850 border-slate-200 dark:border-slate-800 text-slate-500 hover:text-slate-700 dark:text-slate-400'
+                  )}
+                >
+                  <span className="text-xs">📣</span>
+                  <span>Promo Pusat</span>
                 </button>
               </div>
             </div>
@@ -550,7 +595,7 @@ export function Kemitraan() {
                     : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
                 )}
               >
-                1. Q&A Spill Harga
+                {copywritingCategory === 'admin_promo' ? '1. Fitur App' : '1. Q&A Spill Harga'}
               </button>
               <button
                 type="button"
@@ -562,7 +607,7 @@ export function Kemitraan() {
                     : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
                 )}
               >
-                2. Daftar Harga
+                {copywritingCategory === 'admin_promo' ? '2. Rekrut Agen' : '2. Daftar Harga'}
               </button>
               <button
                 type="button"
@@ -574,7 +619,7 @@ export function Kemitraan() {
                     : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
                 )}
               >
-                3. Caption Promo
+                {copywritingCategory === 'admin_promo' ? '3. Diskon Kode' : '3. Caption Promo'}
               </button>
             </div>
 
@@ -703,7 +748,7 @@ Nikmati kontrol bisnis terbaik seperti konter terlaris ${finalStore} di ${finalA
 
 Ayok gabung sekarang di aplikasi Kasir Cuba! Pembukuan lancar, stok voucher terlacak, usaha konter pulsa makin melesat hebat! 🚀✨`;
                 }
-              } else {
+              } else if (copywritingCategory === 'retail') {
                 // retail
                 if (selectedPosterTab === 'qna') {
                   title = '🛒 TEMPLATE POS RETAIL KASIR CUBA Q&A';
@@ -754,6 +799,20 @@ Gabung bersama ratusan UMKM modern lainnya seperti kami ${finalStore} di ${final
 
 Ayok gabung sekarang di aplikasi Kasir Cuba! Catatan pembukuan rapi, bisnis modern berkelas, usahamu makin maju benderang! 🌟🧾✨`;
                 }
+              } else if (copywritingCategory === 'admin_promo') {
+                if (selectedPosterTab === 'qna') {
+                  title = '📣 PROMO: MURNI FITUR APLIKASI';
+                  subtitle = 'Promosi tentang kegunaan, keistimewaan, dan kelebihan Kasir Cuba';
+                  currentTemplateText = promoConfig?.promoAplikasiText || 'Beralih sekarang ke Kasir Cuba! Aplikasi pembukuan canggih untuk UMKM & Konter. Pencatatan otomatis, aman, dan dapat digunakan di berbagai perangkat! 🎉';
+                } else if (selectedPosterTab === 'prices') {
+                  title = '💎 PROMO: KEMITRAAN / AGEN BARU';
+                  subtitle = 'Promosi peluang usaha merekrut mitra & agen baru Kasir Cuba';
+                  currentTemplateText = promoConfig?.promoKemitraanText || 'Peluang Usaha Tanpa Modal! Jadi mitra Kasir Cuba dan dapatkan komisi Rp 10.000 per aktivasi! Kapan lagi bisa kerja sambilan cuma share kode?';
+                } else {
+                  title = '🏷️ PROMO: DISKON LISENSI AGEN';
+                  subtitle = 'Penawaran lisensi murah menggunakan kode REFERRAL Anda';
+                  currentTemplateText = promoConfig?.promoDiskonText || 'Dapatkan diskon khusus! Beli lisensi pro Kasir Cuba hanya Rp 60.000 dengan kode promo saya. Daftar sekarang sebelum kehabisan!';
+                }
               }
 
               return (
@@ -765,7 +824,11 @@ Ayok gabung sekarang di aplikasi Kasir Cuba! Catatan pembukuan rapi, bisnis mode
                         <p className="text-[9px] text-slate-400 dark:text-slate-500 font-bold leading-none">{subtitle}</p>
                       </div>
                       <span className="text-[8px] font-black bg-purple-50 text-purple-600 dark:bg-purple-950/40 dark:text-purple-400 px-2 py-0.5 rounded leading-none shrink-0 uppercase">
-                        {selectedPosterTab === 'qna' ? 'Viral Q&A' : selectedPosterTab === 'prices' ? 'Live Price' : 'Caption'}
+                        {
+                          copywritingCategory === 'admin_promo' 
+                          ? (selectedPosterTab === 'qna' ? 'Fitur App' : selectedPosterTab === 'prices' ? 'Rekrut Agen' : 'Diskon Kode')
+                          : (selectedPosterTab === 'qna' ? 'Viral Q&A' : selectedPosterTab === 'prices' ? 'Live Price' : 'Caption')
+                        }
                       </span>
                     </div>
 
@@ -806,6 +869,94 @@ Ayok gabung sekarang di aplikasi Kasir Cuba! Catatan pembukuan rapi, bisnis mode
                 </div>
               );
             })()}
+          </div>
+        )}
+
+        {/* TAB 3: POSTER PROMO */}
+        {activeTab === 'poster' && (
+          <div className="space-y-4 animate-in fade-in duration-200">
+            <div className="bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300 p-3 rounded-2xl text-[10px] font-bold text-center border border-purple-200 dark:border-purple-800 tracking-wide font-sans">
+              <Camera size={18} className="mx-auto mb-2 opacity-50" />
+              Silakan <strong>Simpan Gambar</strong> atau Screenshot poster di bawah ini untuk dibagikan ke Media Sosial, Group WhatsApp, atau ditempel di konter Anda.
+            </div>
+
+            <button 
+              onClick={downloadPoster}
+              className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-[11px] uppercase tracking-wider rounded-2xl shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2"
+            >
+              <Download size={18} /> DOWNLOAD POSTER (.PNG)
+            </button>
+
+            {/* THE POSTER ELEMENT */}
+            <div ref={posterRef} className="w-full aspect-[3/4] relative rounded-3xl overflow-hidden shadow-2xl bg-gradient-to-br from-violet-900 via-purple-800 to-emerald-900 flex flex-col pt-8 pb-6 px-6 justify-between select-none border-4 border-slate-900 ring-2 ring-purple-500/30">
+              
+              {/* Background Shapes */}
+              <div className="absolute top-[-10%] right-[-10%] w-64 h-64 bg-emerald-400/20 rounded-full blur-3xl pointer-events-none"></div>
+              <div className="absolute bottom-[-5%] left-[-10%] w-64 h-64 bg-purple-500/30 rounded-full blur-3xl pointer-events-none"></div>
+
+              {/* Poster Header */}
+              <div className="relative z-10 text-center space-y-2">
+                <div className="inline-block bg-white/10 backdrop-blur-sm border border-white/20 px-3 py-1.5 rounded-full mb-2">
+                  <span className="text-emerald-300 font-extrabold text-[10px] tracking-widest uppercase">Solusi Bisnis Kasir</span>
+                </div>
+                <h1 className="text-4xl font-black text-white tracking-tighter drop-shadow-lg leading-none">
+                  KASIR <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-yellow-300">CUBA</span>
+                </h1>
+                <p className="text-[11px] font-extrabold text-purple-200 uppercase tracking-widest mt-1 opacity-90 drop-shadow">
+                  Aplikasi Kasir Modern & Mudah
+                </p>
+              </div>
+
+              {/* Poster Middle / Features */}
+              <div className="relative z-10 space-y-4 mt-auto mb-auto">
+                <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/20 shadow-xl transform -rotate-2 hover:rotate-0 transition-transform">
+                  <h3 className="text-yellow-300 font-black text-lg uppercase tracking-wider mb-2 text-center drop-shadow-md">
+                    LIFETIME PRO LICENSE
+                  </h3>
+                  
+                  <div className="flex items-center justify-center gap-3">
+                    <div className="flex flex-col items-end">
+                       <span className="text-[9px] font-bold text-white/70 uppercase tracking-widest mb-1">Standard</span>
+                       <del className="text-lg font-black text-white/50 decoration-rose-500 decoration-[3px] drop-shadow-md">Rp {(promoConfig?.normalPrice || 100000)/1000}K</del>
+                    </div>
+                    <div className="bg-emerald-500 px-4 py-2 rounded-xl shadow-inner transform rotate-3">
+                       <span className="block text-[8.5px] font-black text-emerald-950 uppercase tracking-widest mb-1">Promo Khusus</span>
+                       <span className="block text-3xl font-black text-white leading-none drop-shadow-sm">Rp {(promoConfig?.promoPrice || 60000)/1000}K</span>
+                    </div>
+                  </div>
+                </div>
+
+                <ul className="space-y-2.5 px-2">
+                  <li className="flex items-center gap-2 text-[11px] font-black text-white drop-shadow-md">
+                    <CheckCircle2 size={16} className="text-emerald-400" /> Bebas Biaya Langganan Bulanan
+                  </li>
+                  <li className="flex items-center gap-2 text-[11px] font-black text-white drop-shadow-md">
+                    <CheckCircle2 size={16} className="text-emerald-400" /> Laporan Laba Rugi Otomatis
+                  </li>
+                  <li className="flex items-center gap-2 text-[11px] font-black text-white drop-shadow-md">
+                    <CheckCircle2 size={16} className="text-emerald-400" /> Cetak Struk & Pembukuan Rapi
+                  </li>
+                </ul>
+              </div>
+
+              {/* Poster Footer (Referral info) */}
+              <div className="relative z-10 bg-black/40 backdrop-blur-sm border border-white/10 rounded-2xl p-4 text-center">
+                <p className="text-[9.5px] font-bold text-emerald-300 uppercase tracking-wide mb-2 opacity-90 drop-shadow-sm">
+                  Cara Klaim Diskon?
+                </p>
+                <div className="text-[12px] font-black text-white leading-snug drop-shadow">
+                  Gunakan Kode Promo:<br/>
+                  <span className="inline-block mt-2 text-2xl font-mono tracking-widest text-yellow-300 py-1.5 px-4 bg-white/10 border border-yellow-300/30 rounded-xl">
+                    {referralCode || 'KODE-AGEN'}
+                  </span>
+                </div>
+                <p className="text-[8px] text-white/60 font-bold uppercase mt-3 pt-3 border-t border-white/10 leading-relaxed">
+                  Gabung Program Kemitraan! Sebarkan kode ini & dapatkan komisi Rp {(promoConfig?.referralPoints || 10000).toLocaleString('id-ID')} untuk setiap aktivasi sukses pengguna.
+                </p>
+              </div>
+
+            </div>
+            
           </div>
         )}
       </div>

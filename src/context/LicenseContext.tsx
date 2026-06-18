@@ -27,11 +27,27 @@ interface LicenseContextType {
   rejectWithdrawal: (id: string, reason: string) => Promise<void>;
   checkReferralCodeValid: (code: string) => Promise<{ valid: boolean; ownerEmail?: string }>;
   referralHistory: any[];
+
+  // Custom Promo Config
+  promoConfig: PromoConfig;
+  updatePromoConfig: (config: Partial<PromoConfig>) => Promise<void>;
+}
+
+export interface PromoConfig {
+  text: string;
+  normalPrice: number;
+  promoPrice: number;
+  referralPoints: number;
+  promoAplikasiText?: string;
+  promoKemitraanText?: string;
+  promoDiskonText?: string;
 }
 
 const LicenseContext = createContext<LicenseContextType | undefined>(undefined);
 
 export function LicenseProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
+
   // Pure Local Mock for Native Transition
   const [waNumber, setWaNumber] = useState('087824889706');
 
@@ -45,6 +61,22 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
   const rejectWithdrawal = async () => {};
   const checkReferralCodeValid = async () => ({ valid: true, ownerEmail: 'offline' });
 
+  const [promoConfig, setPromoConfig] = useState<PromoConfig>({
+    text: 'Silakan hubungi tenaga Sales/Promotor yang mengenalkan aplikasi ini kepada Anda untuk mendapatkan Kode Referral & Aktifasi.',
+    normalPrice: 100000,
+    promoPrice: 60000,
+    referralPoints: 10000,
+    promoAplikasiText: 'Beralih sekarang ke Kasir Cuba! Aplikasi pembukuan canggih untuk UMKM & Konter. Pencatatan otomatis, aman, dan dapat digunakan di berbagai perangkat! 🎉',
+    promoKemitraanText: 'Peluang Usaha Tanpa Modal! Jadi mitra Kasir Cuba dan dapatkan komisi Rp 10.000 per aktivasi! Kapan lagi bisa kerja sambilan cuma share kode?',
+    promoDiskonText: 'Dapatkan diskon khusus! Beli lisensi pro Kasir Cuba hanya Rp 60.000 dengan kode promo saya. Daftar sekarang sebelum kehabisan!'
+  });
+
+  const updatePromoConfig = async (config: Partial<PromoConfig>) => {
+    setPromoConfig(prev => ({ ...prev, ...config }));
+  };
+
+  const isAdmin = user?.email === 'alfaza00001@gmail.com' || user?.email === 'elmudzie@gmail.com';
+
   return (
     <LicenseContext.Provider value={{
       isPro: true, // Always PRO in offline mode
@@ -55,7 +87,7 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
       waNumber,
       loadingLicense: false,
       activateLicense,
-      isAdmin: true, // Always Admin in offline mode
+      isAdmin, // Only allow admin dashboard for specific emails
       generateLicenseCode,
       updateWaNumber,
       usedLicenses: [],
@@ -69,7 +101,9 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
       approveWithdrawal,
       rejectWithdrawal,
       checkReferralCodeValid,
-      referralHistory: []
+      referralHistory: [],
+      promoConfig,
+      updatePromoConfig
     }}>
       {children}
     </LicenseContext.Provider>

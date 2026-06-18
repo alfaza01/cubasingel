@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Kasir Cubic</string>
-    <string name="title_activity_main">Kasir Cubic</string>
-    <string name="package_name">com.kasircubic.app</string>
-    <string name="custom_url_scheme">com.kasircubic.app</string>
+    <string name="app_name">Kasir Cuba Singel</string>
+    <string name="title_activity_main">Kasir Cuba Singel</string>
+    <string name="package_name">com.kasircuba.singel</string>
+    <string name="custom_url_scheme">com.kasircuba.singel</string>
 </resources>

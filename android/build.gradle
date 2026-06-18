@@ -10,8 +10,14 @@ buildscript {
         classpath 'com.android.tools.build:gradle:8.2.1'
         classpath 'com.google.gms:google-services:4.4.0'
 
-        // NOTE: Do not place your application dependencies here; they belong
         // in the individual module build.gradle files
+    }
+    configurations.all {
+        resolutionStrategy {
+            force 'org.bouncycastle:bcprov-jdk18on:1.78.1'
+            force 'org.bouncycastle:bcpkix-jdk18on:1.78.1'
+            force 'org.bouncycastle:bcutil-jdk18on:1.78.1'
+        }
     }
 }
 
@@ -23,7 +29,11 @@ allprojects {
         mavenCentral()
     }
     configurations.all {
-        exclude group: 'org.bouncycastle', module: 'bcprov-jdk18on'
+        resolutionStrategy {
+            force 'org.bouncycastle:bcprov-jdk18on:1.78.1'
+            force 'org.bouncycastle:bcpkix-jdk18on:1.78.1'
+            force 'org.bouncycastle:bcutil-jdk18on:1.78.1'
+        }
     }
 }
 

@@ -55,6 +55,13 @@ dependencies {
     implementation project(':capacitor-cordova-android-plugins')
 }
 
+configurations.all {
+    resolutionStrategy {
+        force 'org.bouncycastle:bcprov-jdk15to18:1.68'
+        exclude group: 'org.bouncycastle', module: 'bcprov-jdk18on'
+    }
+}
+
 apply from: 'capacitor.build.gradle'
 
 try {

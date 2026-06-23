@@ -1,6 +1,40 @@
 @import "tailwindcss";
 @custom-variant dark (&:is(.dark *));
 
+/* =============================================
+   ANDROID SAFE AREA FIX
+   Agar konten tidak tertutup status bar (atas)
+   dan navigation bar (bawah) HP
+   ============================================= */
+:root {
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
+  --sar: env(safe-area-inset-right, 0px);
+}
+
+html {
+  /* Izinkan konten mengisi seluruh layar termasuk area status bar */
+  height: 100%;
+}
+
+body {
+  height: 100%;
+  /* Pastikan viewport-fit=cover aktif */
+  overscroll-behavior: none;
+}
+
+#root {
+  /* Padding atas = tinggi status bar HP */
+  padding-top: env(safe-area-inset-top, 0px);
+  /* Padding bawah = tinggi navigation bar HP */
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
 /* Android WebView GPU Tearing artifacts global fix */
 body, #root {
   -webkit-font-smoothing: antialiased;

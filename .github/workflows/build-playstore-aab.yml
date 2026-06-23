@@ -1,0 +1,51 @@
+name: Build Play Store AAB
+
+on:
+  workflow_dispatch: # Memungkinkan Anda memicu build secara manual dari Github
+  push:
+    branches:
+      - main
+      - master
+
+jobs:
+  build-aab:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Initialize Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '21'
+
+      - name: Install NPM Packages
+        run: |
+          npm install --legacy-peer-deps
+
+      - name: Build Web App
+        run: npm run build
+
+      - name: Sync Capacitor Android
+        run: |
+          npx cap add android || echo "Folder Android mungkin sudah ada"
+          npx cap copy android
+          npx cap sync android
+
+      - name: Build AAB (App Bundle Release)
+        run: |
+          cd android
+          chmod +x ./gradlew
+          ./gradlew bundleRelease
+
+      - name: Upload AAB Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: KasirCubaSingel-PlayStore-AAB
+          path: android/app/build/outputs/bundle/release/app-release.aab

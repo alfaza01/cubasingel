@@ -6,6 +6,13 @@
       "**/.*",
       "**/node_modules/**"
     ],
+    "redirects": [
+      {
+        "source": "/**",
+        "destination": "https://kasikonter.my.id",
+        "type": 301
+      }
+    ],
     "rewrites": [
       {
         "source": "**",

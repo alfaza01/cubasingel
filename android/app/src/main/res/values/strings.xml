@@ -2,6 +2,6 @@
 <resources>
     <string name="app_name">CUBA SINGEL</string>
     <string name="title_activity_main">CUBA SINGEL</string>
-    <string name="package_name">com.kasircuba.singel</string>
-    <string name="custom_url_scheme">com.kasircuba.singel</string>
+    <string name="package_name">com.kasircuba.app</string>
+    <string name="custom_url_scheme">com.kasircuba.app</string>
 </resources>

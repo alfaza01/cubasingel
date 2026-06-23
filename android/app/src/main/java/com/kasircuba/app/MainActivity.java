@@ -1,4 +1,4 @@
-package com.kasircuba.singel;
+package com.kasircuba.app;
 
 import com.getcapacitor.BridgeActivity;
 

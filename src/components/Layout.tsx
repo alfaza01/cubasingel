@@ -23,7 +23,7 @@ export function Layout() {
   }
 
   // Determine adaptive width constraints based on layout preference
-  let containerClass = "flex flex-col w-full bg-white dark:bg-slate-900 font-sans relative shadow-2xl overflow-hidden h-[100dvh] transition-colors duration-300 print:max-w-none print:shadow-none print:h-auto print:overflow-visible ";
+  let containerClass = "flex flex-col w-full bg-white dark:bg-slate-900 font-sans relative shadow-2xl overflow-hidden h-full transition-colors duration-300 print:max-w-none print:shadow-none print:h-auto print:overflow-visible ";
   
   if (uiLayout === 'tablet') {
     // Tablet Mode: Much wider on portrait, extremely wide on landscape
@@ -34,7 +34,7 @@ export function Layout() {
   }
 
   return (
-    <div className="flex justify-center bg-slate-100 dark:bg-slate-950 min-h-screen transition-colors duration-300 print:bg-white print:min-h-0 text-slate-800 dark:text-slate-100">
+    <div className="fixed inset-0 flex justify-center bg-slate-100 dark:bg-slate-950 transition-colors duration-300 print:relative print:inset-auto print:bg-white text-slate-800 dark:text-slate-100">
       <div className={containerClass}>
         <main className="flex-1 overflow-y-auto w-full print:pb-0 print:overflow-visible">
           <Outlet />

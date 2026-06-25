@@ -37,6 +37,7 @@ export function Layout() {
     <div className="fixed inset-0 flex justify-center bg-slate-100 dark:bg-slate-950 transition-colors duration-300 print:relative print:inset-auto print:bg-white text-slate-800 dark:text-slate-100">
       <div className={containerClass}>
         <main className="flex-1 overflow-y-auto w-full print:pb-0 print:overflow-visible">
+          <div className="h-[env(safe-area-inset-top,24px)] w-full shrink-0 no-print" />
           <Outlet />
         </main>
 

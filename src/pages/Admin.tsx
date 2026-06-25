@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   ShieldCheck,
   Users,
@@ -21,7 +21,7 @@ import { useLicense } from "../context/LicenseContext";
 import { useStore } from "../context/StoreContext";
 import { Navigate } from "react-router";
 import { cn } from "../lib/utils";
-import html2canvas from "html2canvas";
+import html2canvas from "html2canvas-pro";
 
 export function Admin() {
   const {
@@ -355,9 +355,9 @@ export function Admin() {
                           <p className="font-mono font-bold text-sm text-indigo-600 dark:text-indigo-400">
                             {lic.code}
                           </p>
-                          {lic.assignedEmail && (
+                          {lic.assigned_email && (
                             <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">
-                              Target: <b>{lic.assignedEmail}</b>
+                              Target: <b>{lic.assigned_email}</b>
                             </p>
                           )}
                         </div>
@@ -389,7 +389,7 @@ export function Admin() {
                           {lic.code}
                         </p>
                         <p className="text-[10px] text-slate-600 dark:text-slate-300 mt-1">
-                          Digunakan oleh: <b>{lic.usedByEmail}</b>
+                          Digunakan oleh: <b>{lic.used_by_email}</b>
                         </p>
                       </div>
                     ))}

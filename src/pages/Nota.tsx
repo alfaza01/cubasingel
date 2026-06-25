@@ -56,12 +56,7 @@ export function Nota() {
     setShowPreview(true);
   };
 
-  const handleSystemPrint = () => {
-    setShowPreview(false);
-    setTimeout(() => {
-      window.print();
-    }, 250);
-  };
+
 
   const totalPrice = items.reduce((acc, curr) => {
     const raw = curr.price.replace(/\D/g, '');
@@ -70,71 +65,97 @@ export function Nota() {
 
   const currentDate = format(new Date(), 'dd MMM yyyy, HH:mm', { locale: id });
 
+  const generateEscPosData = () => {
+    const encoder = new EscPosEncoder();
+    const lineWidth = printSize === '58' ? 32 : 48;
+    
+    encoder.initialize();
+    encoder.alignCenter();
+    encoder.bold(true).textLine(storeName || 'KASIR CUBA').bold(false);
+    encoder.textLine(storeAddress || 'Alamat Toko');
+    encoder.line('-', lineWidth);
+    encoder.bold(true).textLine(title || 'NOTA').bold(false);
+    
+    encoder.alignLeft();
+    encoder.textLine(`Tanggal  : ${currentDate}`);
+    encoder.textLine(`Kasir    : ${cashierName}`);
+    if (customerName) encoder.textLine(`Pelanggan: ${customerName}`);
+    
+    encoder.line('-', lineWidth);
+    
+    items.forEach(item => {
+       const name = item.name || 'Item';
+       const itemTotal = (Number(item.price.replace(/\D/g, '')) || 0) * (item.qty || 1);
+       const priceStr = `Rp ${itemTotal.toLocaleString('id-ID')}`;
+       
+       if (notaMode === 'produk' && typeof item.qty === 'number' && item.qty > 1) {
+          encoder.textLine(name);
+          const rawPrice = Number(item.price.replace(/\D/g, '')) || 0;
+          const detailStr = `${item.qty} x ${rawPrice.toLocaleString('id-ID')}`;
+          const spaces = lineWidth - detailStr.length - priceStr.length;
+          encoder.textLine(detailStr + ' '.repeat(spaces > 0 ? spaces : 1) + priceStr);
+       } else {
+          // simple layout: name on left, price on right on same line if fits, else next line
+          if (name.length + priceStr.length + 1 <= lineWidth) {
+             const spaces = lineWidth - name.length - priceStr.length;
+             encoder.textLine(name + ' '.repeat(spaces) + priceStr);
+          } else {
+             encoder.textLine(name);
+             const spaces = lineWidth - priceStr.length;
+             encoder.textLine(' '.repeat(spaces) + priceStr);
+          }
+       }
+    });
+    
+    encoder.line('-', lineWidth);
+    
+    const totalStr = `TOTAL`;
+    const totPriceStr = `Rp ${totalPrice.toLocaleString('id-ID')}`;
+    const totSpaces = lineWidth - totalStr.length - totPriceStr.length;
+    encoder.bold(true)
+           .textLine(totalStr + ' '.repeat(totSpaces > 0 ? totSpaces : 1) + totPriceStr)
+           .bold(false);
+    
+    if (notes) {
+       encoder.newline();
+       encoder.alignCenter();
+       encoder.textLine(notes);
+    }
+    
+    encoder.newline();
+    encoder.alignCenter();
+    encoder.textLine('*** Terima Kasih ***');
+    encoder.printAndFeed(4);
+    
+    return encoder.encode();
+  };
+
+  const handleSystemPrint = async () => {
+    // If it's Android, we try to use RawBT intent
+    const isAndroid = typeof navigator !== 'undefined' && /android/i.test(navigator.userAgent);
+    if (isAndroid) {
+      try {
+        const { printViaRawBT } = await import('../lib/escpos');
+        await printViaRawBT(generateEscPosData());
+        setShowPreview(false);
+        return;
+      } catch (err) {
+        console.error('RawBT error', err);
+        // Fallback to window.print
+      }
+    }
+    
+    setShowPreview(false);
+    setTimeout(() => {
+      window.print();
+    }, 250);
+  };
+
   const handleWebBluetoothPrint = async () => {
     try {
       setIsPrinting(true);
-      const encoder = new EscPosEncoder();
-      const lineWidth = printSize === '58' ? 32 : 48;
-      
-      encoder.initialize();
-      encoder.alignCenter();
-      encoder.bold(true).textLine(storeName || 'KASIR CUBA').bold(false);
-      encoder.textLine(storeAddress || 'Alamat Toko');
-      encoder.line('-', lineWidth);
-      encoder.bold(true).textLine(title || 'NOTA').bold(false);
-      
-      encoder.alignLeft();
-      encoder.textLine(`Tanggal  : ${currentDate}`);
-      encoder.textLine(`Kasir    : ${cashierName}`);
-      if (customerName) encoder.textLine(`Pelanggan: ${customerName}`);
-      
-      encoder.line('-', lineWidth);
-      
-      items.forEach(item => {
-         const name = item.name || 'Item';
-         const itemTotal = (Number(item.price.replace(/\D/g, '')) || 0) * (item.qty || 1);
-         const priceStr = `Rp ${itemTotal.toLocaleString('id-ID')}`;
-         
-         if (notaMode === 'produk' && typeof item.qty === 'number' && item.qty > 1) {
-            encoder.textLine(name);
-            const rawPrice = Number(item.price.replace(/\D/g, '')) || 0;
-            const detailStr = `${item.qty} x ${rawPrice.toLocaleString('id-ID')}`;
-            const spaces = lineWidth - detailStr.length - priceStr.length;
-            encoder.textLine(detailStr + ' '.repeat(spaces > 0 ? spaces : 1) + priceStr);
-         } else {
-            // simple layout: name on left, price on right on same line if fits, else next line
-            if (name.length + priceStr.length + 1 <= lineWidth) {
-               const spaces = lineWidth - name.length - priceStr.length;
-               encoder.textLine(name + ' '.repeat(spaces) + priceStr);
-            } else {
-               encoder.textLine(name);
-               const spaces = lineWidth - priceStr.length;
-               encoder.textLine(' '.repeat(spaces) + priceStr);
-            }
-         }
-      });
-      
-      encoder.line('-', lineWidth);
-      
-      const totalStr = `TOTAL`;
-      const totPriceStr = `Rp ${totalPrice.toLocaleString('id-ID')}`;
-      const totSpaces = lineWidth - totalStr.length - totPriceStr.length;
-      encoder.bold(true)
-             .textLine(totalStr + ' '.repeat(totSpaces > 0 ? totSpaces : 1) + totPriceStr)
-             .bold(false);
-      
-      if (notes) {
-         encoder.newline();
-         encoder.alignCenter();
-         encoder.textLine(notes);
-      }
-      
-      encoder.newline();
-      encoder.alignCenter();
-      encoder.textLine('*** Terima Kasih ***');
-      encoder.printAndFeed(4);
-
-      await printViaWebBluetooth(encoder.encode());
+      const data = generateEscPosData();
+      await printViaWebBluetooth(data);
       alert('Struk berhasil dicetak via Web Bluetooth!');
       setShowPreview(false);
     } catch (err: any) {

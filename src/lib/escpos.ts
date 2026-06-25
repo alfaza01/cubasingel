@@ -62,6 +62,38 @@ export class EscPosEncoder {
   }
 }
 
+export function printViaRawBT(data: Uint8Array) {
+  return new Promise<boolean>((resolve, reject) => {
+    try {
+      let binary = '';
+      const len = data.byteLength;
+      for (let i = 0; i < len; i++) {
+        binary += String.fromCharCode(data[i]);
+      }
+      const base64Data = btoa(binary);
+      
+      // Must prefix with 'base64,' so RawBT parses the data as binary ESC/POS
+      const intentUrl = `intent:base64,${base64Data}#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;end;`;
+      
+      // Use an invisible anchor tag to ensure the intent is launched successfully
+      // within Capacitor/Cordova WebViews and standard browsers.
+      const link = document.createElement('a');
+      link.href = intentUrl;
+      // Target _system guarantees native handling in hybrid apps like Capacitor
+      link.target = '_system';
+      document.body.appendChild(link);
+      link.click();
+      
+      setTimeout(() => {
+        document.body.removeChild(link);
+        resolve(true);
+      }, 500);
+    } catch (err: any) {
+      reject(new Error('Gagal mencetak via RawBT: ' + err.message));
+    }
+  });
+}
+
 export async function printViaWebBluetooth(data: Uint8Array) {
   try {
     // 1. NATIVE BLUETOOTH (CAPACITOR / CORDOVA PLUGIN)
@@ -80,40 +112,63 @@ export async function printViaWebBluetooth(data: Uint8Array) {
           );
         };
 
-        // Cek apakah sudah terhubung
-        (window as any).bluetoothSerial.isConnected(
-          () => {
-            writeData();
-          },
-          () => {
-            // Jika belum terhubung, coba reconnect otomatis
-            (window as any).bluetoothSerial.connect(
-              macAddress,
-              () => {
-                writeData();
-              },
-              (err: any) => {
-                reject(new Error('Gagal terhubung ulang ke printer: ' + err));
-              }
-            );
-          }
-        );
+        const executeConnection = () => {
+          // Cek apakah sudah terhubung
+          (window as any).bluetoothSerial.isConnected(
+            () => {
+              writeData();
+            },
+            () => {
+              // Jika belum terhubung, coba reconnect otomatis
+              (window as any).bluetoothSerial.connect(
+                macAddress,
+                () => {
+                  writeData();
+                },
+                (err: any) => {
+                  // Fallback to connectInsecure
+                  (window as any).bluetoothSerial.connectInsecure(
+                    macAddress,
+                    () => {
+                      writeData();
+                    },
+                    (err2: any) => {
+                      reject(new Error(`Gagal terhubung ulang ke printer:\nNormal: ${err}\nInsecure: ${err2}`));
+                    }
+                  );
+                }
+              );
+            }
+          );
+        };
+
+        const permissions = (window as any).cordova?.plugins?.permissions;
+        if (!permissions) {
+          executeConnection();
+          return;
+        }
+
+        const permsToRequest = [
+          permissions.BLUETOOTH_CONNECT,
+          permissions.BLUETOOTH_SCAN,
+          permissions.ACCESS_FINE_LOCATION,
+          permissions.ACCESS_COARSE_LOCATION
+        ].filter(Boolean);
+
+        permissions.requestPermissions(permsToRequest, (status: any) => {
+          executeConnection(); // Proceed regardless, let native gracefully error if still false
+        }, () => executeConnection());
       });
     }
 
     // 2. FALLBACK KE WEB BLUETOOTH (BROWSER / PWA)
     const device = await (navigator as any).bluetooth.requestDevice({
-      filters: [
-        { services: ['000018f0-0000-1000-8000-00805f9b34fb'] },
-        { services: ['e7810a71-73ae-499d-8c15-faa9aef0c3f2'] },
-        { services: ['49535343-fe7d-4ae5-8fa9-9fafd205e455'] }
-      ],
+      acceptAllDevices: true,
       optionalServices: [
         '000018f0-0000-1000-8000-00805f9b34fb',
         'e7810a71-73ae-499d-8c15-faa9aef0c3f2',
         '49535343-fe7d-4ae5-8fa9-9fafd205e455'
-      ],
-      acceptAllDevices: false
+      ]
     });
 
     if (!device.gatt) throw new Error('Device does not support GATT');

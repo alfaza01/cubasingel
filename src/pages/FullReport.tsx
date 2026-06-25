@@ -7,11 +7,15 @@ import {
   Search, Filter, Check, X, Tag, ChevronDown, ChevronUp, SlidersHorizontal, ListFilter, HelpCircle, ArrowRightLeft, CalendarDays, Coins
 } from 'lucide-react';
 import { Transaction } from '../types';
-
+import { jsPDF } from 'jspdf';
+import html2canvas from 'html2canvas-pro';
+import { Filesystem, Directory } from '@capacitor/filesystem';
+import { Share } from '@capacitor/share';
 export function FullReport() {
   const navigate = useNavigate();
   const { transactions, wallets } = useStore();
   const [now, setNow] = useState(new Date());
+  const [isExporting, setIsExporting] = useState(false);
 
   // Report Period Selection
   const [reportPeriod, setReportPeriod] = useState<'HARI_INI' | 'KEMARIN' | 'MINGGU_INI' | 'BULAN_INI' | 'SEMUA' | 'KUSTOM'>('HARI_INI');
@@ -399,8 +403,79 @@ export function FullReport() {
     };
   }, [searchedTransactions]);
 
-  const handlePrint = () => {
-    window.print();
+  const handlePrint = async () => {
+    try {
+      setIsExporting(true);
+      
+      // Beri waktu agar React merender semua tab dan menghapus constraint overflow
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      const element = document.getElementById('report-page-container');
+      if (!element) {
+        setIsExporting(false);
+        return;
+      }
+      
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#f8fafc', // slate-50
+        windowHeight: element.scrollHeight,
+        windowWidth: element.scrollWidth
+      });
+      
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({
+        orientation: 'p',
+        unit: 'mm',
+        format: 'a4'
+      });
+      
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      
+      let heightLeft = pdfHeight;
+      let position = 0;
+      const pageHeight = pdf.internal.pageSize.getHeight();
+
+      pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight);
+      heightLeft -= pageHeight;
+
+      while (heightLeft > 0) {
+        position = heightLeft - pdfHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight);
+        heightLeft -= pageHeight;
+      }
+      
+      const fileName = `Laporan_Arus_Kas_${new Date().toISOString().split('T')[0]}.pdf`;
+      const isAndroid = typeof navigator !== 'undefined' && /android/i.test(navigator.userAgent);
+      
+      if (isAndroid) {
+        const base64Data = pdf.output('datauristring').split(',')[1];
+        const savedFile = await Filesystem.writeFile({
+          path: fileName,
+          data: base64Data,
+          directory: Directory.Cache
+        });
+        
+        await Share.share({
+          title: 'Laporan Arus Kas PDF',
+          text: 'Laporan Arus Kas Toko',
+          url: savedFile.uri,
+          dialogTitle: 'Simpan / Bagikan Laporan PDF',
+        });
+      } else {
+        pdf.save(fileName);
+      }
+      
+    } catch (err: any) {
+      console.error(err);
+      alert('Gagal mengekspor PDF: ' + err.message);
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const handleExportTransactionsToExcel = () => {
@@ -552,7 +627,7 @@ export function FullReport() {
   };
 
   return (
-    <div className="bg-slate-55 min-h-screen pb-24 overflow-y-auto font-sans shadow-inner">
+    <div id="report-page-container" className={`bg-slate-55 font-sans shadow-inner ${isExporting ? 'h-auto overflow-visible pb-10' : 'min-h-screen pb-24 overflow-y-auto'}`}>
       <style>{`
         @media print {
           .no-print {
@@ -617,12 +692,15 @@ export function FullReport() {
         </div>
 
         {/* PRINT CONTROLLER */}
-        <div className="flex justify-end mt-4 no-print">
+        <div className={`flex justify-end mt-4 ${isExporting ? 'hidden' : 'no-print'}`}>
           <button 
             onClick={handlePrint}
-            className="bg-orange-500 hover:bg-orange-600 text-white text-[10px] font-black px-4.5 py-2.5 rounded-xl flex items-center gap-1.5 transition-all active:scale-95 shadow-md shadow-orange-500/20 cursor-pointer uppercase tracking-wider"
+            disabled={isExporting}
+            className={`text-white text-[10px] font-black px-4.5 py-2.5 rounded-xl flex items-center gap-1.5 transition-all shadow-md cursor-pointer uppercase tracking-wider ${
+              isExporting ? 'bg-orange-400 opacity-80 cursor-wait' : 'bg-orange-500 hover:bg-orange-600 active:scale-95 shadow-orange-500/20'
+            }`}
           >
-            <FileDown size={14} /> Cetak Laporan PDF (*Lengkap)
+            <FileDown size={14} /> {isExporting ? 'MENYIAPKAN PDF...' : 'Cetak Laporan PDF (*Lengkap)'}
           </button>
         </div>
       </div>
@@ -744,10 +822,10 @@ export function FullReport() {
         {/* ============================================== */}
         {/* ON-SCREEN MODE CONTAINER (HIDDEN DURING PRINT) */}
         {/* ============================================== */}
-        <div className="print:hidden space-y-4">
+        <div className={`space-y-4 ${isExporting ? '' : 'print:hidden'}`}>
           
           {/* TAB 1: RINGKASAN */}
-          {activeTab === 'RINGKASAN' && (
+          {(activeTab === 'RINGKASAN' || isExporting) && (
             <div className="space-y-4 animate-in fade-in duration-200">
               
               {/* SISA SALDO RUNTIME GRIDS */}
@@ -851,7 +929,7 @@ export function FullReport() {
           )}
 
           {/* TAB 2: DETAILED CASHFLOW FLUIDS */}
-          {activeTab === 'ARUS_KAS' && (
+          {(activeTab === 'ARUS_KAS' || isExporting) && (
             <div className="bg-white dark:bg-slate-800 border border-slate-150 rounded-2xl p-4.5 shadow-sm space-y-5 animate-in fade-in duration-200">
               
               {/* KAS MASUK */}
@@ -958,7 +1036,7 @@ export function FullReport() {
           )}
 
           {/* TAB 3: CATEGORY STATS TABLE */}
-          {activeTab === 'KATEGORI' && (
+          {(activeTab === 'KATEGORI' || isExporting) && (
             <div className="bg-white dark:bg-slate-800 border border-slate-150 rounded-2xl p-4.5 shadow-sm animate-in fade-in duration-200">
               <div className="flex items-center justify-between mb-3.5 px-1 pb-2.5 border-b border-slate-100 dark:border-slate-800">
                 <h3 className="font-black text-[11px] text-slate-800 dark:text-slate-100 tracking-wider uppercase flex items-center gap-1.5 font-sans">
@@ -1003,7 +1081,7 @@ export function FullReport() {
           )}
 
           {/* TAB 4: DETAILED FILTERABLE JOURNAL */}
-          {activeTab === 'JURNAL' && (
+          {(activeTab === 'JURNAL' || isExporting) && (
             <div className="bg-white dark:bg-slate-800 border border-slate-150 rounded-[2rem] p-4 sm:p-5 shadow-sm space-y-4 animate-in fade-in duration-200">
                            {/* Reset form and search controls header */}
               <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
@@ -1133,7 +1211,7 @@ export function FullReport() {
               </div>
 
               {/* Ledger Lists wrapper */}
-              <div className="space-y-2.5 max-h-[480px] overflow-y-auto pr-1">
+              <div className={`space-y-2.5 pr-1 ${isExporting ? 'h-auto overflow-visible' : 'max-h-[480px] overflow-y-auto'}`}>
                 {searchedTransactions.length === 0 ? (
                   <div className="py-12 bg-slate-50 dark:bg-slate-900 border border-dashed border-slate-200 dark:border-slate-700 rounded-2xl text-center px-4">
                     <HelpCircle className="text-slate-300 mx-auto mb-2" size={20} />
@@ -1315,7 +1393,7 @@ export function FullReport() {
         {/* ======================================================== */}
         {/* PRINT ONLY LAYOUT: COMPLETE formal A4 REPORT DOCUMENT   */}
         {/* ======================================================== */}
-        <div className="hidden print:block bg-white dark:bg-slate-800 text-black text-[10px] space-y-5 print-full-width p-4 select-none animate-in fade-in">
+        <div className={`bg-white dark:bg-slate-800 text-black text-[10px] space-y-5 print-full-width p-4 select-none animate-in fade-in ${isExporting ? 'hidden' : 'hidden print:block'}`}>
           
           {/* Header Print Document */}
           <div className="text-center border-b-2 border-black pb-3 space-y-1">

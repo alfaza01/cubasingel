@@ -105,9 +105,13 @@ export function useToast() {
   return context;
 }
 
-// Internal Toast Container Component to render alerts
 function ToastContainer() {
   const { toasts, dismissToast, isOnline, syncStatus, syncMessage } = useToast();
+  const [dismissedOffline, setDismissedOffline] = useState(false);
+
+  useEffect(() => {
+    if (isOnline) setDismissedOffline(false);
+  }, [isOnline]);
 
   const getIcon = (type: string) => {
     switch (type) {
@@ -138,27 +142,36 @@ function ToastContainer() {
   };
 
   return (
-    <div 
-      id="custom-toast-portal"
-      className="fixed bottom-safe left-1/2 -translate-x-1/2 md:left-auto md:translate-x-0 md:top-6 md:right-6 md:bottom-auto pointer-events-none z-[9999] flex flex-col gap-3 w-full max-w-[340px] px-4 md:px-0"
-    >
-      {/* 1. Network Status Check indicator widget (Only when offline or recovering) */}
-      {!isOnline && (
-        <motion.div
-          initial={{ opacity: 0, y: 30, scale: 0.95 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.95 }}
-          className="flex items-center gap-3 p-3.5 rounded-2xl border bg-rose-50/90 dark:bg-rose-950/20 border-rose-100 dark:border-rose-900/30 backdrop-blur-md shadow-xl text-xs font-medium text-rose-700 dark:text-rose-300 pointer-events-auto"
-        >
-          <div className="bg-rose-500/10 p-2 rounded-xl">
-            <WifiOff className="w-4 h-4 text-rose-600 dark:text-rose-400 animate-pulse" />
-          </div>
-          <div className="flex-1">
-            <h4 className="font-semibold text-rose-800 dark:text-rose-200">Mode Offline</h4>
-            <p className="text-[11px] text-rose-600 dark:text-rose-400 mt-0.5">Semua perubahan disimpan lokal dan disebarkan saat online.</p>
-          </div>
-        </motion.div>
-      )}
+    <>
+      {/* 1. Floating Top Offline Indicator */}
+      <AnimatePresence>
+        {(!isOnline && !dismissedOffline) && (
+          <motion.div
+            initial={{ opacity: 0, y: -20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.95 }}
+            className="fixed top-4 left-1/2 -translate-x-1/2 z-[10000] flex items-center gap-2 py-1.5 pl-2 pr-8 rounded-full border bg-rose-50/95 dark:bg-rose-950/90 border-rose-200 dark:border-rose-900/50 backdrop-blur-md shadow-lg pointer-events-auto"
+          >
+            <div className="bg-rose-500/20 p-1 rounded-full flex-shrink-0">
+              <WifiOff className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400 animate-pulse" />
+            </div>
+            <div className="text-[10px] text-rose-700 dark:text-rose-300 font-bold tracking-wide">
+              MODE OFFLINE
+            </div>
+            <button 
+              onClick={() => setDismissedOffline(true)}
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 text-rose-400 hover:text-rose-600 dark:hover:text-rose-200 rounded-full transition-colors active:scale-90"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <div 
+        id="custom-toast-portal"
+        className="fixed bottom-safe left-1/2 -translate-x-1/2 md:left-auto md:translate-x-0 md:top-6 md:right-6 md:bottom-auto pointer-events-none z-[9999] flex flex-col gap-3 w-full max-w-[340px] px-4 md:px-0"
+      >
 
       {/* 2. Persistent Cloud Sync Status Indicator (Beautiful, minimal indicator shown when working) */}
       <AnimatePresence>
@@ -209,6 +222,7 @@ function ToastContainer() {
           </motion.div>
         ))}
       </AnimatePresence>
-    </div>
+      </div>
+    </>
   );
 }

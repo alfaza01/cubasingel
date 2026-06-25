@@ -161,56 +161,75 @@ function PosKasirView({ active, isPc, setActiveView, showToast, onConfirm, activ
     const [isFullscreen, setIsFullscreen] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
 
+  const generateEscPosData = () => {
+    if (!lastTx) return new Uint8Array(0);
+    const encoder = new EscPosEncoder();
+    const lineWidth = 32;
+    
+    encoder.initialize();
+    encoder.alignCenter();
+    encoder.bold(true).textLine(storeName || 'KASIR CUBA').bold(false);
+    encoder.textLine(storeAddress || 'Toko Anda');
+    encoder.line('-', lineWidth);
+    
+    encoder.alignLeft();
+    encoder.textLine(`Waktu: ${new Date().toLocaleString('id-ID', { hour:'2-digit', minute:'2-digit', day:'2-digit', month:'short' })}`);
+    encoder.textLine(`Kasir: ${kasirName}`);
+    encoder.textLine(`TrxID: ${lastTx.id ? lastTx.id.slice(0, 8) : 'NEW'}`);
+    
+    encoder.line('-', lineWidth);
+    
+    lastTx.items.forEach((it: any) => {
+       encoder.textLine(it.name);
+       const qtyPrice = `${it.qty}x ${fmt(it.price)}`;
+       const totalItem = fmt(it.qty * it.price);
+       const padLen = Math.max(1, lineWidth - qtyPrice.length - totalItem.length);
+       const spaces = ' '.repeat(padLen);
+       encoder.textLine(`${qtyPrice}${spaces}${totalItem}`);
+    });
+    
+    encoder.line('-', lineWidth);
+    
+    const gtLabel = 'TOTAL';
+    const gtVal = fmt(lastTx.grandTotal);
+    encoder.bold(true).textLine(`${gtLabel}${' '.repeat(Math.max(1, lineWidth - gtLabel.length - gtVal.length))}${gtVal}`).bold(false);
+    
+    const paidLabel = 'TUNAI';
+    const paidVal = fmt(lastTx.paid);
+    encoder.textLine(`${paidLabel}${' '.repeat(Math.max(1, lineWidth - paidLabel.length - paidVal.length))}${paidVal}`);
+    
+    const changeLabel = 'KEMBALI';
+    const changeVal = fmt(lastTx.change);
+    encoder.textLine(`${changeLabel}${' '.repeat(Math.max(1, lineWidth - changeLabel.length - changeVal.length))}${changeVal}`);
+    
+    encoder.newline();
+    encoder.alignCenter();
+    encoder.textLine('Terima Kasih');
+    encoder.newline().newline().newline();
+    
+    return encoder.encode();
+  };
+
+  const handleSystemPrint = async () => {
+    const isAndroid = typeof navigator !== 'undefined' && /android/i.test(navigator.userAgent);
+    if (isAndroid && lastTx) {
+      try {
+        const { printViaRawBT } = await import('../lib/escpos');
+        await printViaRawBT(generateEscPosData());
+        return;
+      } catch (err) {
+        console.error('RawBT error', err);
+      }
+    }
+    window.print();
+  };
+
   const handleBluetoothPrint = async () => {
     if (!lastTx) return;
     try {
       setIsPrinting(true);
-      const encoder = new EscPosEncoder();
-      const lineWidth = 32;
-      
-      encoder.initialize();
-      encoder.alignCenter();
-      encoder.bold(true).textLine(storeName || 'KASIR CUBA').bold(false);
-      encoder.textLine(storeAddress || 'Toko Anda');
-      encoder.line('-', lineWidth);
-      
-      encoder.alignLeft();
-      encoder.textLine(`Waktu: ${new Date().toLocaleString('id-ID', { hour:'2-digit', minute:'2-digit', day:'2-digit', month:'short' })}`);
-      encoder.textLine(`Kasir: ${kasirName}`);
-      encoder.textLine(`TrxID: ${lastTx.id ? lastTx.id.slice(0, 8) : 'NEW'}`);
-      
-      encoder.line('-', lineWidth);
-      
-      lastTx.items.forEach((it: any) => {
-         encoder.textLine(it.name);
-         const qtyPrice = `${it.qty}x ${fmt(it.price)}`;
-         const totalItem = fmt(it.qty * it.price);
-         // simple padding
-         const padLen = Math.max(1, lineWidth - qtyPrice.length - totalItem.length);
-         const spaces = ' '.repeat(padLen);
-         encoder.textLine(`${qtyPrice}${spaces}${totalItem}`);
-      });
-      
-      encoder.line('-', lineWidth);
-      
-      const gtLabel = 'TOTAL';
-      const gtVal = fmt(lastTx.grandTotal);
-      encoder.bold(true).textLine(`${gtLabel}${' '.repeat(Math.max(1, lineWidth - gtLabel.length - gtVal.length))}${gtVal}`).bold(false);
-      
-      const paidLabel = 'TUNAI';
-      const paidVal = fmt(lastTx.paid);
-      encoder.textLine(`${paidLabel}${' '.repeat(Math.max(1, lineWidth - paidLabel.length - paidVal.length))}${paidVal}`);
-      
-      const changeLabel = 'KEMBALI';
-      const changeVal = fmt(lastTx.change);
-      encoder.textLine(`${changeLabel}${' '.repeat(Math.max(1, lineWidth - changeLabel.length - changeVal.length))}${changeVal}`);
-      
-      encoder.newline();
-      encoder.alignCenter();
-      encoder.textLine('Terima Kasih');
-      encoder.newline().newline().newline();
-      
-      await printViaWebBluetooth(encoder.encode());
+      const data = generateEscPosData();
+      await printViaWebBluetooth(data);
       alert('Struk berhasil dicetak via Web Bluetooth!');
     } catch (err: any) {
       console.error(err);
@@ -631,7 +650,7 @@ function PosKasirView({ active, isPc, setActiveView, showToast, onConfirm, activ
             <i className="fa-solid fa-arrow-left"></i> KEMBALI
           </button>
           <div className="flex gap-2">
-            <button onClick={() => window.print()} className="px-6 py-2.5 bg-slate-700 hover:bg-slate-600 text-white rounded-full font-black shadow-xl flex items-center gap-2 active:scale-95">
+            <button onClick={handleSystemPrint} className="px-6 py-2.5 bg-slate-700 hover:bg-slate-600 text-white rounded-full font-black shadow-xl flex items-center gap-2 active:scale-95">
               <i className="fa-solid fa-print"></i> SISTEM
             </button>
             <button onClick={handleBluetoothPrint} disabled={isPrinting} className="px-6 py-2.5 bg-blue-600 text-white rounded-full font-black shadow-xl flex items-center gap-2 active:scale-95">

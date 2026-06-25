@@ -492,116 +492,135 @@ export function History() {
     }
   };
 
+  const generateEscPosData = () => {
+    if (!printTx) return new Uint8Array(0);
+    const encoder = new EscPosEncoder();
+    const lineWidth = printSize === '58' ? 32 : 48;
+    
+    encoder.initialize();
+    encoder.alignCenter();
+    encoder.bold(true).textLine(storeName || 'KASIR CUBA').bold(false);
+    if (storeAddress) encoder.textLine(storeAddress);
+    
+    encoder.line('-', lineWidth);
+    encoder.bold(true).textLine('STRUK TRANSAKSI').bold(false);
+    encoder.newline();
+    
+    encoder.alignLeft();
+    const txCode = txSequentialMap[printTx.id] || printTx.id;
+    const txDateObj = new Date(printTx.date);
+    const formattedDate = format(txDateObj, 'dd MMM yyyy, HH.mm', { locale: idLocale });
+    
+    encoder.textLine(`No Trx   : ${txCode}`);
+    encoder.textLine(`Tanggal  : ${formattedDate}`);
+    encoder.textLine(`Kasir    : ${cashierName || 'Kasir'}`);
+    if (printCustomerName) encoder.textLine(`Pelanggan: ${printCustomerName}`);
+    
+    encoder.line('-', lineWidth);
+    
+    if (printTx.items && printTx.items.length > 0) {
+      printTx.items.forEach(item => {
+        const name = item.name || 'Item';
+        const lineTotal = item.price * (item.quantity || 1);
+        const priceStr = `Rp ${lineTotal.toLocaleString('id-ID')}`;
+        
+        if (item.quantity > 1) {
+          encoder.textLine(name);
+          const detailStr = `${item.quantity} x ${item.price.toLocaleString('id-ID')}`;
+          const spaces = lineWidth - detailStr.length - priceStr.length;
+          encoder.textLine(detailStr + ' '.repeat(spaces > 0 ? spaces : 1) + priceStr);
+        } else {
+          if (name.length + priceStr.length + 1 <= lineWidth) {
+            const spaces = lineWidth - name.length - priceStr.length;
+            encoder.textLine(name + ' '.repeat(spaces) + priceStr);
+          } else {
+            encoder.textLine(name);
+            const spaces = lineWidth - priceStr.length;
+            encoder.textLine(' '.repeat(spaces) + priceStr);
+          }
+        }
+      });
+    } else {
+      const desc = printTx.description || 'Transaksi';
+      const priceStr = `Rp ${printTx.total.toLocaleString('id-ID')}`;
+      if (desc.length + priceStr.length + 1 <= lineWidth) {
+        const spaces = lineWidth - desc.length - priceStr.length;
+        encoder.textLine(desc + ' '.repeat(spaces) + priceStr);
+      } else {
+        encoder.textLine(desc);
+        const spaces = lineWidth - priceStr.length;
+        encoder.textLine(' '.repeat(spaces) + priceStr);
+      }
+    }
+    
+    encoder.line('-', lineWidth);
+    
+    if (printTx.adminFee && printTx.adminFee > 0) {
+      const subTotalStr = `Subtotal: Rp ${printTx.total.toLocaleString('id-ID')}`;
+      encoder.alignRight().textLine(subTotalStr);
+      const feeStr = `Biaya Admin: Rp ${printTx.adminFee.toLocaleString('id-ID')}`;
+      encoder.textLine(feeStr);
+      encoder.line('-', lineWidth);
+    }
+    
+    const totalAmount = printTx.total + (printTx.adminFee || 0);
+    const totalLabel = 'TOTAL';
+    const totalVal = `Rp ${totalAmount.toLocaleString('id-ID')}`;
+    const totSpaces = lineWidth - totalLabel.length - totalVal.length;
+    encoder.alignLeft().bold(true)
+           .textLine(totalLabel + ' '.repeat(totSpaces > 0 ? totSpaces : 1) + totalVal)
+           .bold(false);
+    
+    if (printTx.sourceWallet || printTx.targetWallet) {
+      encoder.newline().alignCenter();
+      const walletSourceObj = wallets.find(w => w.id === printTx.sourceWallet);
+      const walletTargetObj = wallets.find(w => w.id === printTx.targetWallet);
+      if (walletSourceObj && walletTargetObj) {
+        encoder.textLine(`Dari: ${walletSourceObj.name} -> Ke: ${walletTargetObj.name}`);
+      } else if (walletTargetObj) {
+        encoder.textLine(`Metode Pembayaran: ${walletTargetObj.name}`);
+      } else if (walletSourceObj) {
+        encoder.textLine(`Sumber Dana: ${walletSourceObj.name}`);
+      }
+    }
+    
+    if (printNotes) {
+      encoder.newline();
+      encoder.alignCenter();
+      encoder.textLine(printNotes);
+    }
+    
+    encoder.newline();
+    encoder.alignCenter();
+    encoder.textLine('*** Terima Kasih ***');
+    encoder.printAndFeed(4);
+    
+    return encoder.encode();
+  };
+
+  const handleSystemPrint = async () => {
+    const isAndroid = typeof navigator !== 'undefined' && /android/i.test(navigator.userAgent);
+    if (isAndroid && printTx) {
+      try {
+        const { printViaRawBT } = await import('../lib/escpos');
+        await printViaRawBT(generateEscPosData());
+        setPrintTx(null);
+        return;
+      } catch (err) {
+        console.error('RawBT error', err);
+      }
+    }
+    setTimeout(() => {
+      window.print();
+    }, 200);
+  };
+
   const handleBluetoothPrint = async () => {
     if (!printTx) return;
     try {
       setIsPrintingBluetooth(true);
-      const encoder = new EscPosEncoder();
-      const lineWidth = printSize === '58' ? 32 : 48;
-      
-      encoder.initialize();
-      encoder.alignCenter();
-      encoder.bold(true).textLine(storeName || 'KASIR CUBA').bold(false);
-      if (storeAddress) encoder.textLine(storeAddress);
-      
-      encoder.line('-', lineWidth);
-      encoder.bold(true).textLine('STRUK TRANSAKSI').bold(false);
-      encoder.newline();
-      
-      encoder.alignLeft();
-      const txCode = txSequentialMap[printTx.id] || printTx.id;
-      const txDateObj = new Date(printTx.date);
-      const formattedDate = format(txDateObj, 'dd MMM yyyy, HH.mm', { locale: idLocale });
-      
-      encoder.textLine(`No Trx   : ${txCode}`);
-      encoder.textLine(`Tanggal  : ${formattedDate}`);
-      encoder.textLine(`Kasir    : ${cashierName || 'Kasir'}`);
-      if (printCustomerName) encoder.textLine(`Pelanggan: ${printCustomerName}`);
-      
-      encoder.line('-', lineWidth);
-      
-      // Items or transaction details
-      if (printTx.items && printTx.items.length > 0) {
-        printTx.items.forEach(item => {
-          const name = item.name || 'Item';
-          const lineTotal = item.price * (item.quantity || 1);
-          const priceStr = `Rp ${lineTotal.toLocaleString('id-ID')}`;
-          
-          if (item.quantity > 1) {
-            encoder.textLine(name);
-            const detailStr = `${item.quantity} x ${item.price.toLocaleString('id-ID')}`;
-            const spaces = lineWidth - detailStr.length - priceStr.length;
-            encoder.textLine(detailStr + ' '.repeat(spaces > 0 ? spaces : 1) + priceStr);
-          } else {
-            if (name.length + priceStr.length + 1 <= lineWidth) {
-              const spaces = lineWidth - name.length - priceStr.length;
-              encoder.textLine(name + ' '.repeat(spaces) + priceStr);
-            } else {
-              encoder.textLine(name);
-              const spaces = lineWidth - priceStr.length;
-              encoder.textLine(' '.repeat(spaces) + priceStr);
-            }
-          }
-        });
-      } else {
-        // Fallback to description
-        const desc = printTx.description || 'Transaksi';
-        const priceStr = `Rp ${printTx.total.toLocaleString('id-ID')}`;
-        if (desc.length + priceStr.length + 1 <= lineWidth) {
-          const spaces = lineWidth - desc.length - priceStr.length;
-          encoder.textLine(desc + ' '.repeat(spaces) + priceStr);
-        } else {
-          encoder.textLine(desc);
-          const spaces = lineWidth - priceStr.length;
-          encoder.textLine(' '.repeat(spaces) + priceStr);
-        }
-      }
-      
-      encoder.line('-', lineWidth);
-      
-      // Subtotal, Admin fee and Total
-      if (printTx.adminFee && printTx.adminFee > 0) {
-        const subTotalStr = `Subtotal: Rp ${printTx.total.toLocaleString('id-ID')}`;
-        encoder.alignRight().textLine(subTotalStr);
-        const feeStr = `Biaya Admin: Rp ${printTx.adminFee.toLocaleString('id-ID')}`;
-        encoder.textLine(feeStr);
-        encoder.line('-', lineWidth);
-      }
-      
-      const totalAmount = printTx.total + (printTx.adminFee || 0);
-      const totalLabel = 'TOTAL';
-      const totalVal = `Rp ${totalAmount.toLocaleString('id-ID')}`;
-      const totSpaces = lineWidth - totalLabel.length - totalVal.length;
-      encoder.alignLeft().bold(true)
-             .textLine(totalLabel + ' '.repeat(totSpaces > 0 ? totSpaces : 1) + totalVal)
-             .bold(false);
-      
-      // Source / Target wallet
-      if (printTx.sourceWallet || printTx.targetWallet) {
-        encoder.newline().alignCenter();
-        const walletSourceObj = wallets.find(w => w.id === printTx.sourceWallet);
-        const walletTargetObj = wallets.find(w => w.id === printTx.targetWallet);
-        if (walletSourceObj && walletTargetObj) {
-          encoder.textLine(`Dari: ${walletSourceObj.name} -> Ke: ${walletTargetObj.name}`);
-        } else if (walletTargetObj) {
-          encoder.textLine(`Metode Pembayaran: ${walletTargetObj.name}`);
-        } else if (walletSourceObj) {
-          encoder.textLine(`Sumber Dana: ${walletSourceObj.name}`);
-        }
-      }
-      
-      if (printNotes) {
-        encoder.newline();
-        encoder.alignCenter();
-        encoder.textLine(printNotes);
-      }
-      
-      encoder.newline();
-      encoder.alignCenter();
-      encoder.textLine('*** Terima Kasih ***');
-      encoder.printAndFeed(4);
-      
-      await printViaWebBluetooth(encoder.encode());
+      const data = generateEscPosData();
+      await printViaWebBluetooth(data);
       alert('Struk berhasil dicetak via Web Bluetooth!');
       setPrintTx(null);
     } catch (err: any) {
@@ -610,6 +629,7 @@ export function History() {
       setIsPrintingBluetooth(false);
     }
   };
+
 
   return (
     <>
@@ -1808,11 +1828,7 @@ export function History() {
             <div className="bg-slate-50 dark:bg-slate-900 border-t border-slate-150 dark:border-slate-800 p-5 flex flex-col gap-2">
               <button
                 type="button"
-                onClick={() => {
-                  setTimeout(() => {
-                    window.print();
-                  }, 200);
-                }}
+                onClick={handleSystemPrint}
                 className="w-full bg-rose-600 hover:bg-rose-700 text-white py-3 px-4 rounded-2xl flex items-center justify-center gap-2 text-xs font-black uppercase tracking-wider transition-all shadow-md active:scale-95 cursor-pointer font-sans"
               >
                 <Smartphone size={14} /> Cetak Bawaan Sistem (Browser / PDF)

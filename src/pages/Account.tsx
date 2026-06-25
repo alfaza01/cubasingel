@@ -144,6 +144,8 @@ export function Account() {
         () => setBtConnected(true),
         () => setBtConnected(false)
       );
+    } else if (btMacAddress && localStorage.getItem('use_web_bluetooth')) {
+      setBtConnected(true);
     }
   }, [btMacAddress]);
 
@@ -494,22 +496,75 @@ export function Account() {
   };
 
   // Native Bluetooth scanning and connection logic
-  const scanBluetoothDevices = () => {
-    if (!(window as any).bluetoothSerial) {
-      alert('Bluetooth Native tidak tersedia. Pastikan Anda menjalankan aplikasi via APK Android.');
+  const requestBluetoothPermissions = (callback: () => void, errorCallback: (err: string) => void) => {
+    const permissions = (window as any).cordova?.plugins?.permissions;
+    if (!permissions) {
+      // Not running in Cordova/Capacitor or plugin missing, just proceed
+      callback();
       return;
     }
-    setIsScanningBt(true);
-    (window as any).bluetoothSerial.list(
-      (devices: any[]) => {
-        setPairedDevices(devices);
+    const permsToRequest = [
+      permissions.BLUETOOTH_CONNECT,
+      permissions.BLUETOOTH_SCAN,
+      permissions.ACCESS_FINE_LOCATION,
+      permissions.ACCESS_COARSE_LOCATION
+    ].filter(Boolean); // Filter out undefined if plugin doesn't have the constants
+
+    permissions.requestPermissions(permsToRequest, (status: any) => {
+      if (status.hasPermission) {
+        callback();
+      } else {
+        // Many Android 11 devices will report false for BLUETOOTH_CONNECT (since it's A12+)
+        // so we still try to proceed even if it says false, or we can just try.
+        // Actually, let's just proceed regardless and let it fail gracefully.
+        callback();
+      }
+    }, () => callback()); // On error requesting, still try to proceed
+  };
+
+  const scanBluetoothDevices = async () => {
+    if ((window as any).bluetoothSerial) {
+      setIsScanningBt(true);
+      requestBluetoothPermissions(() => {
+        (window as any).bluetoothSerial.list(
+          (devices: any[]) => {
+            setPairedDevices(devices);
+            setIsScanningBt(false);
+          },
+          (error: any) => {
+            alert('Gagal mengambil daftar Bluetooth (Pastikan Izin Diberikan & Bluetooth Menyala): ' + error);
+            setIsScanningBt(false);
+          }
+        );
+      }, (err) => {
+        alert(err);
         setIsScanningBt(false);
-      },
-      (error: any) => {
-        alert('Gagal mengambil daftar Bluetooth: ' + error);
+      });
+    } else if ((navigator as any).bluetooth) {
+      try {
+        setIsScanningBt(true);
+        const device = await (navigator as any).bluetooth.requestDevice({
+          acceptAllDevices: true,
+          optionalServices: [
+            '000018f0-0000-1000-8000-00805f9b34fb',
+            'e7810a71-73ae-499d-8c15-faa9aef0c3f2',
+            '49535343-fe7d-4ae5-8fa9-9fafd205e455'
+          ]
+        });
+        
+        setBtConnected(true);
+        setBtMacAddress(device.name || device.id || 'Web Bluetooth Printer');
+        localStorage.setItem('bluetooth_printer_mac', device.name || device.id || 'web_bt_printer');
+        localStorage.setItem('use_web_bluetooth', 'true');
+        alert('Printer ' + (device.name || '') + ' berhasil dipilih!');
+      } catch (error: any) {
+        alert('Gagal memilih printer: ' + error.message);
+      } finally {
         setIsScanningBt(false);
       }
-    );
+    } else {
+      alert('Bluetooth tidak didukung di perangkat atau browser ini.');
+    }
   };
 
   const connectToBluetooth = (macAddress: string) => {
@@ -524,20 +579,39 @@ export function Account() {
         alert('Printer berhasil terhubung!');
       },
       (error: any) => {
-        setBtConnected(false);
-        setBtConnecting(false);
-        alert('Gagal terhubung ke printer: ' + error);
+        // Fallback to connectInsecure for typical thermal printers
+        (window as any).bluetoothSerial.connectInsecure(
+          macAddress,
+          () => {
+            setBtConnected(true);
+            setBtConnecting(false);
+            setBtMacAddress(macAddress);
+            localStorage.setItem('bluetooth_printer_mac', macAddress);
+            alert('Printer berhasil terhubung (Mode Insecure)!');
+          },
+          (err2: any) => {
+            setBtConnected(false);
+            setBtConnecting(false);
+            alert(`Gagal terhubung ke printer:\nNormal: ${error}\nInsecure: ${err2}`);
+          }
+        );
       }
     );
   };
 
   const disconnectBluetooth = () => {
-    if (!(window as any).bluetoothSerial) return;
-    (window as any).bluetoothSerial.disconnect(() => {
+    if ((window as any).bluetoothSerial) {
+      (window as any).bluetoothSerial.disconnect(() => {
+        setBtConnected(false);
+        setBtMacAddress(null);
+        localStorage.removeItem('bluetooth_printer_mac');
+      });
+    } else {
       setBtConnected(false);
       setBtMacAddress(null);
       localStorage.removeItem('bluetooth_printer_mac');
-    });
+      localStorage.removeItem('use_web_bluetooth');
+    }
   };
 
   // Helper formatting to rupiah

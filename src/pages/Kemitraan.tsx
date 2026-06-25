@@ -7,7 +7,7 @@ import { cn } from '../lib/utils';
 import { 
   Users, Megaphone, ChevronUp, ChevronDown, Award, Gift, Check, Copy, Wallet, ArrowLeft, ArrowRight, CheckCircle2, X, Image as ImageIcon, Camera, Download
 } from 'lucide-react';
-import html2canvas from 'html2canvas';
+import html2canvas from 'html2canvas-pro';
 
 export function Kemitraan() {
   const navigate = useNavigate();

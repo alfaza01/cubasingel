@@ -12,7 +12,7 @@ export function BottomNav() {
   ];
 
   return (
-    <nav className="absolute bottom-0 w-full bg-white dark:bg-slate-800 border-t border-slate-100 dark:border-slate-800 flex justify-between px-2 pb-safe z-50">
+    <nav className="w-full bg-white dark:bg-slate-800 border-t border-slate-100 dark:border-slate-800 flex justify-between px-2 pb-safe z-50">
       {navItems.map((item) => {
         const Icon = item.icon;
         return (

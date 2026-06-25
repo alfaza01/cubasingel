@@ -1,6 +1,5 @@
 {
   "appId": "com.kasircuba.app",
-  "appName": "CUBA SINGEL",
-  "webDir": "dist",
-  "bundledWebRuntime": false
+  "appName": "CUBA",
+  "webDir": "dist"
 }

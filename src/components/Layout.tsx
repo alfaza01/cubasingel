@@ -36,11 +36,11 @@ export function Layout() {
   return (
     <div className="flex justify-center bg-slate-100 dark:bg-slate-950 min-h-screen transition-colors duration-300 print:bg-white print:min-h-0 text-slate-800 dark:text-slate-100">
       <div className={containerClass}>
-        <main className="flex-1 overflow-y-auto w-full pb-[80px] print:pb-0 print:overflow-visible">
+        <main className="flex-1 overflow-y-auto w-full print:pb-0 print:overflow-visible">
           <Outlet />
         </main>
 
-        <div className="print:hidden">
+        <div className="print:hidden w-full shrink-0">
           <BottomNav />
         </div>
       </div>

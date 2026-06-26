@@ -257,19 +257,19 @@ export function Reports() {
       {/* REPORT LINKS (The origin downloads section modernized) */}
       <div className="bg-white dark:bg-slate-800 border border-slate-150 rounded-2xl p-4 shadow-sm">
         <h4 className="text-[8px] font-black tracking-widest text-slate-400 uppercase mb-3 px-0.5 flex items-center justify-between">
-           <span>UNDUH REKAPITULASI DOKUMEN</span> <Award size={12} className="text-amber-500" />
+           <span>PILIH TIPE DOKUMEN CETAK</span> <Award size={12} className="text-amber-500" />
         </h4>
         <div className="space-y-3">
-          <ReportCard title="Laporan Harian" desc="Rekap penjualan, diskon, dan untung." />
-          <ReportCard title="Laporan Bulanan" desc="Tren penjualan bulan ini vs bulan lalu." />
-          <ReportCard title="Stok Masuk & Keluar" desc="Pergerakan inventaris dan log." />
+          <ReportCard title="Laporan Arus Kas (Buku Besar)" desc="Cetak Full PDF/Excel transaksi finansial." onClick={() => navigate('/reports')} />
+          <ReportCard title="Mutasi & Riwayat" desc="Cetak log riwayat seluruh aktivitas masuk/keluar." onClick={() => navigate('/history')} />
+          <ReportCard title="Inventaris & Stok" desc="Cetak Excel/PDF khusus untuk barang fisik/voucher." onClick={() => navigate('/vouchers')} />
         </div>
       </div>
     </div>
   );
 }
 
-function ReportCard({ title, desc }: { title: string, desc: string }) {
+function ReportCard({ title, desc, onClick }: { title: string, desc: string, onClick?: () => void }) {
   return (
     <div className="p-3 bg-slate-50/50 hover:bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-150 shadow-xs flex flex-row items-center justify-between gap-3 transition-all active:scale-[0.99]">
       <div className="flex items-center gap-3">
@@ -283,8 +283,9 @@ function ReportCard({ title, desc }: { title: string, desc: string }) {
       </div>
       <button 
         type="button"
+        onClick={onClick}
         className="w-8 h-8 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-blue-50 hover:text-blue-600 flex items-center justify-center text-slate-600 dark:text-slate-300 transition-colors shadow-xs active:scale-90 cursor-pointer"
-        title="Download PDF"
+        title="Buka Cetak Dokumen"
       >
         <Download size={14} />
       </button>

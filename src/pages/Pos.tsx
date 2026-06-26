@@ -336,12 +336,22 @@ function PosKasirView({ active, isPc, setActiveView, showToast, onConfirm, activ
   }, [products, searchQ, selCat]);
 
   const handleScanPos = (decodedText: string) => {
-    const p = products.find(prod => prod.barcode === decodedText && prod.is_active);
+    // 1. Bersihkan spasi kosong yang mungkin terbawa dari scanner
+    const cleanText = decodedText.trim();
+    
+    // 2. Langsung matikan kamera/scanner agar tidak looping scan berkali-kali
+    setShowScanner(false);
+    
+    // 3. Cari produk dengan barcode yang cocok (case-insensitive & trim)
+    const p = products.find(prod => 
+      prod.barcode && prod.barcode.trim() === cleanText && prod.is_active
+    );
+    
     if (p) {
       addToCart(p);
-      showToast(`1x ${p.name}`);
+      showToast(`✅ 1x ${p.name} ditambahkan ke keranjang`);
     } else {
-      showToast('Barcode tidak ditemukan atau tidak aktif!');
+      showToast(`❌ Barcode (${cleanText}) tidak ditemukan atau produk tidak aktif!`);
     }
   };
 
@@ -1136,8 +1146,10 @@ function PosKasirView({ active, isPc, setActiveView, showToast, onConfirm, activ
       {showFormScanner && (
         <BarcodeScanner
           onScan={(decodedText) => {
-            setFBarcode(decodedText);
-            showToast('Barcode berhasil di-scan');
+            // Bersihkan teks dan matikan scanner otomatis
+            setFBarcode(decodedText.trim());
+            setShowFormScanner(false);
+            showToast('✅ Barcode berhasil di-scan');
           }}
           onClose={() => setShowFormScanner(false)}
         />

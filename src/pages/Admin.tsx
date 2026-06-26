@@ -33,6 +33,7 @@ export function Admin() {
     generateLicenseCode,
     usedLicenses,
     unusedLicenses,
+    syncLicenses,
     allWithdrawals,
     approveWithdrawal,
     rejectWithdrawal,
@@ -179,6 +180,107 @@ export function Admin() {
     }
   };
 
+  const handleExportLicenses = () => {
+    try {
+      const allLics = [...unusedLicenses, ...usedLicenses];
+      if (allLics.length === 0) {
+        alert("Belum ada data lisensi untuk diekspor!");
+        return;
+      }
+
+      const fileName = `Backup_Database_Lisensi_${new Date().toISOString().split('T')[0]}.xls`;
+      const printDateStr = new Date().toLocaleString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+      let tableHtml = `
+<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+<meta charset="utf-8" />
+<style>
+  body { font-family: 'Arial', sans-serif; }
+  table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+  th, td { border: 1px solid #e2e8f0; padding: 10px; font-size: 11px; vertical-align: middle; }
+  th { background-color: #1e3a8a; color: #ffffff; font-weight: bold; text-align: center; text-transform: uppercase; }
+  .text-center { text-align: center; }
+  .font-mono { font-family: 'Courier New', Courier, monospace; }
+  .title-header { font-size: 18px; font-weight: bold; color: #1e3a8a; border: none; text-align: left; }
+  .summary-label { font-weight: bold; background-color: #f8fafc; color: #334155; }
+  .summary-value { font-weight: bold; color: #1e3a8a; }
+</style>
+</head>
+<body>
+  <table>
+    <colgroup>
+      <col width="50" />
+      <col width="180" />
+      <col width="120" />
+      <col width="200" />
+      <col width="200" />
+      <col width="150" />
+    </colgroup>
+    <tbody>
+      <tr>
+        <td colspan="6" class="title-header">MASTER DATABASE LISENSI KASIR CUBA</td>
+      </tr>
+      <tr>
+        <td style="border: none;"></td>
+        <td class="summary-label">Tanggal Backup</td>
+        <td class="summary-value" colspan="4">\${printDateStr}</td>
+      </tr>
+      <tr>
+        <td style="border: none;"></td>
+        <td class="summary-label">Total Lisensi</td>
+        <td class="text-center font-mono summary-value" colspan="4">\${allLics.length} Item (Terpakai: \${usedLicenses.length}, Kosong: \${unusedLicenses.length})</td>
+      </tr>
+      <tr style="height: 15px;"><td colspan="6" style="border: none;"></td></tr>
+      <tr>
+        <th>No</th>
+        <th>Kode Lisensi (CUBA-xxx)</th>
+        <th>Status</th>
+        <th>Target Email Asli</th>
+        <th>Email Pengguna Aktif</th>
+        <th>Waktu Aktivasi</th>
+      </tr>
+`;
+
+      allLics.sort((a, b) => (b.id || 0) - (a.id || 0)).forEach((lic, idx) => {
+        const isUsed = lic.used;
+        const statusText = isUsed ? 'TERPAKAI' : 'TERSEDIA';
+        const bgStatus = isUsed ? 'background-color: #fef2f2; color: #991b1b;' : 'background-color: #f0fdf4; color: #166534;';
+
+        tableHtml += `
+      <tr>
+        <td class="text-center font-mono">\${idx + 1}</td>
+        <td class="font-mono font-bold">\${lic.code || '-'}</td>
+        <td class="text-center font-bold" style="\${bgStatus}">\${statusText}</td>
+        <td>\${lic.assigned_email || '-'}</td>
+        <td>\${lic.used_by_email || '-'}</td>
+        <td class="text-center">\${lic.used_at ? new Date(lic.used_at).toLocaleDateString('id-ID') : '-'}</td>
+      </tr>
+`;
+      });
+
+      tableHtml += `
+    </tbody>
+  </table>
+</body>
+</html>
+`;
+
+      const blob = new Blob([tableHtml], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', fileName);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      console.error(err);
+      alert('Gagal mengekspor Backup: ' + err.message);
+    }
+  };
+
   return (
     <div className="max-w-md mx-auto p-4 md:p-6 pb-24 space-y-6">
       <div className="bg-slate-900 rounded-[2rem] shadow-xl border border-slate-700/50 overflow-hidden relative">
@@ -261,10 +363,29 @@ export function Admin() {
       {activeTab === "lisensi" && (
         <div className="space-y-6 animate-in fade-in duration-200">
           <div className="bg-white dark:bg-slate-900 rounded-[2rem] p-6 shadow-sm border border-slate-100 dark:border-slate-800">
-            <h2 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-wider mb-5 flex items-center gap-2">
-              <ShieldCheck size={16} className="text-yellow-500" /> Manajemen
-              Lisensi
-            </h2>
+            <div className="flex justify-between items-center mb-5">
+              <h2 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                <ShieldCheck size={16} className="text-yellow-500" /> Manajemen Lisensi
+              </h2>
+              <div className="flex gap-2">
+                <button 
+                  onClick={async () => {
+                    await syncLicenses();
+                    alert('Berhasil! Data lisensi terbaru telah disinkronisasi dari database Cloud.');
+                  }}
+                  className="flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-900/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-600 dark:text-emerald-400 px-3 py-1.5 rounded-xl border border-emerald-200 dark:border-emerald-800 transition-colors text-[10px] font-black uppercase tracking-wider shadow-sm active:scale-95 cursor-pointer"
+                  title="Tarik data terbaru dari server"
+                >
+                  <RefreshCcw size={12} strokeWidth={3} /> Sync
+                </button>
+                <button 
+                  onClick={handleExportLicenses}
+                  className="flex items-center gap-1.5 bg-blue-50 dark:bg-blue-900/40 hover:bg-blue-100 dark:hover:bg-blue-900/60 text-blue-600 dark:text-blue-400 px-3 py-1.5 rounded-xl border border-blue-200 dark:border-blue-800 transition-colors text-[10px] font-black uppercase tracking-wider shadow-sm active:scale-95 cursor-pointer"
+                >
+                  <Download size={12} strokeWidth={3} /> Backup Excel
+                </button>
+              </div>
+            </div>
 
             <div className="space-y-4">
               <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-700/50">

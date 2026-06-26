@@ -13,7 +13,7 @@ import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
 export function FullReport() {
   const navigate = useNavigate();
-  const { transactions, wallets } = useStore();
+  const { transactions, wallets, storeName, storeAddress, cashierName } = useStore();
   const [now, setNow] = useState(new Date());
   const [isExporting, setIsExporting] = useState(false);
 
@@ -417,7 +417,7 @@ export function FullReport() {
       }
       
       const canvas = await html2canvas(element, {
-        scale: 2,
+        scale: 3, // Ditingkatkan dari 2 ke 3 untuk ketajaman ekstra (HD)
         useCORS: true,
         logging: false,
         backgroundColor: '#f8fafc', // slate-50
@@ -488,6 +488,34 @@ export function FullReport() {
       const sheetName = 'Jurnal_Ledger_Transaksi';
       const fileName = `Laporan_Transaksi_${new Date().toISOString().split('T')[0]}.xls`;
 
+      const escapeHtml = (unsafe: string) => {
+        return (unsafe || '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#039;');
+      };
+
+      const cleanStoreName = escapeHtml(storeName || 'KASIR CUBA');
+      const cleanStoreAddress = escapeHtml(storeAddress || '-');
+      const cleanCashierName = escapeHtml(cashierName || 'Kasir');
+      
+      const activeW = wallets.find(w => w.id === searchWallet);
+      const walletNameStr = activeW ? activeW.name.toUpperCase() : 'SEMUA';
+      const cleanFilter = escapeHtml(`Arah=${searchType}, Kategori=${searchCategory}, Dompet=${walletNameStr}`);
+      
+      let periodText = 'Semua Periode';
+      if (reportPeriod !== 'SEMUA') {
+        const startStr = periodDateRange.start ? periodDateRange.start.toLocaleDateString('id-ID') : '-';
+        const endStr = periodDateRange.end ? periodDateRange.end.toLocaleDateString('id-ID') : '-';
+        periodText = `${startStr} s.d. ${endStr}`;
+      }
+      const dateRangeStr = escapeHtml(periodText);
+      const printDateStr = escapeHtml(new Date().toLocaleString('id-ID'));
+
+      const endRow = 11 + searchedTransactions.length;
+
       let tableHtml = `
 <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
 <head>
@@ -507,34 +535,108 @@ export function FullReport() {
 </xml>
 <![endif]-->
 <style>
-  table { border-collapse: collapse; margin-top: 10px; }
-  th, td { border: 1px solid #cbd5e1; padding: 8px 10px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 11px; white-space: nowrap !important; }
-  th { background-color: #1e3a8a; color: #ffffff; font-weight: bold; text-align: center; font-size: 11.5px; }
+  body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+  .title-main { font-size: 16px; font-weight: bold; color: #1e3a8a; text-align: center; }
+  .title-sub { font-size: 12px; font-weight: bold; color: #1e293b; text-align: center; }
+  .title-addr { font-size: 10px; font-style: italic; color: #475569; text-align: center; }
+  .summary-label { background-color: #f1f5f9; color: #334155; font-weight: bold; font-size: 10.5px; border: 1px solid #cbd5e1; padding: 6px; }
+  .summary-value { background-color: #ffffff; color: #1e293b; font-size: 10.5px; border: 1px solid #cbd5e1; padding: 6px; }
+  .summary-title { background-color: #0f172a; color: #ffffff; font-weight: bold; font-size: 10.5px; text-align: center; border: 1px solid #cbd5e1; padding: 6px; }
+  table { border-collapse: collapse; margin-top: 15px; width: 100%; }
+  th { background-color: #1e3a8a; color: #ffffff; font-weight: bold; text-align: center; font-size: 11px; border: 1px solid #94a3b8; padding: 10px 8px; }
+  td { border: 1px solid #cbd5e1; padding: 8px 10px; font-size: 10.5px; white-space: nowrap !important; }
   .text-center { text-align: center; }
   .text-right { text-align: right; }
-  .font-mono { font-family: Consolas, monospace; }
-  .header-info { font-family: 'Segoe UI', sans-serif; font-size: 14px; font-weight: bold; margin-bottom: 5px; color: #1e293b; }
-  .sub-info { font-family: 'Segoe UI', sans-serif; font-size: 11px; margin-bottom: 15px; color: #64748b; }
+  .text-left { text-align: left; }
+  .font-mono { font-family: Consolas, 'Courier New', monospace; }
+  .font-bold { font-weight: bold; }
+  .row-even { background-color: #f8fafc; }
+  .row-odd { background-color: #ffffff; }
+  .footer-label { background-color: #e2e8f0; color: #1e293b; font-weight: bold; text-align: right; border: 1px solid #94a3b8; font-size: 11px; padding: 10px 8px; }
+  .footer-value { background-color: #e2e8f0; color: #1e293b; font-weight: bold; border: 1px solid #94a3b8; font-family: Consolas, monospace; font-size: 11px; padding: 10px 8px; }
 </style>
 </head>
 <body>
-  <div class="header-info">LAPORAN JURNAL LEDGER ARUS KAS</div>
-  <div class="sub-info">Dicetak pada: \${new Date().toLocaleString('id-ID')} | Filter: Arah=\${searchType}, Kategori=\${searchCategory}, Dompet=\${searchWallet} | Total Transaksi: \${searchedTransactions.length}</div>
-  
   <table>
     <colgroup>
-      <col width="50" />
+      <col width="45" />
       <col width="90" />
       <col width="110" />
       <col width="65" />
       <col width="120" />
-      <col width="280" />
+      <col width="220" />
+      <col width="300" />
+      <col width="150" />
+      <col width="110" />
       <col width="110" />
       <col width="90" />
-      <col width="110" />
-      <col width="95" />
+      <col width="130" />
+      <col width="130" />
+      <col width="130" />
+      <col width="100" />
+      <col width="140" />
     </colgroup>
     <thead>
+      <tr>
+        <td colspan="16" class="title-main">\${cleanStoreName}</td>
+      </tr>
+      <tr>
+        <td colspan="16" class="title-sub">MUTASI & RIWAYAT TRANSAKSI ALIRAN DANA</td>
+      </tr>
+      <tr>
+        <td colspan="16" class="title-addr">Alamat: \${cleanStoreAddress}</td>
+      </tr>
+      <tr style="height: 15px;">
+        <td colspan="16" style="border: none;"></td>
+      </tr>
+      <tr>
+        <td style="border: none;"></td>
+        <td class="summary-label">Nama Toko / Unit</td>
+        <td class="summary-value" colspan="2">\${cleanStoreName}</td>
+        <td style="border: none;" colspan="2"></td>
+        <td class="summary-label" colspan="2">Total Transaksi</td>
+        <td class="summary-value text-center font-bold" colspan="2">\${searchedTransactions.length} Trx</td>
+        <td style="border: none;" colspan="6"></td>
+      </tr>
+      <tr>
+        <td style="border: none;"></td>
+        <td class="summary-label">Kasir Pelaksana</td>
+        <td class="summary-value" colspan="2">\${cleanCashierName}</td>
+        <td style="border: none;" colspan="2"></td>
+        <td class="summary-label" colspan="2">Total Uang Masuk</td>
+        <td class="text-right font-mono summary-value font-bold" colspan="2" style="mso-number-format:'\\\\Rp* \\\\#\\\\,\\\\#\\\\#0';">=SUM(L12:L\${endRow})</td>
+        <td style="border: none;" colspan="6"></td>
+      </tr>
+      <tr>
+        <td style="border: none;"></td>
+        <td class="summary-label">Tanggal Cetak</td>
+        <td class="summary-value" colspan="2">\${printDateStr}</td>
+        <td style="border: none;" colspan="2"></td>
+        <td class="summary-label" colspan="2">Total Uang Keluar</td>
+        <td class="text-right font-mono summary-value font-bold" colspan="2" style="mso-number-format:'\\\\Rp* \\\\#\\\\,\\\\#\\\\#0';">=SUM(M12:M\${endRow})</td>
+        <td style="border: none;" colspan="6"></td>
+      </tr>
+      <tr>
+        <td style="border: none;"></td>
+        <td class="summary-label">Filter Aliran / Tipe</td>
+        <td class="summary-value" colspan="2">\${cleanFilter}</td>
+        <td style="border: none;" colspan="2"></td>
+        <td class="summary-label" colspan="2">Total Keuntungan Jasa</td>
+        <td class="text-right font-mono summary-value font-bold" colspan="2" style="mso-number-format:'\\\\Rp* \\\\#\\\\,\\\\#\\\\#0';">=SUM(N12:N\${endRow})</td>
+        <td style="border: none;" colspan="6"></td>
+      </tr>
+      <tr>
+        <td style="border: none;"></td>
+        <td class="summary-label">Periode Tanggal</td>
+        <td class="summary-value" colspan="2">\${dateRangeStr}</td>
+        <td style="border: none;" colspan="2"></td>
+        <td class="summary-title" colspan="2" style="background-color: #0f172a; color: #ffffff;">Aliran Bersih (Nett)</td>
+        <td class="text-right font-mono summary-value font-bold" colspan="2" style="mso-number-format:'\\\\Rp* \\\\#\\\\,\\\\#\\\\#0'; background-color: #f1f5f9; color: #1e3a8a;">=J6-J7+J8</td>
+        <td style="border: none;" colspan="6"></td>
+      </tr>
+      <tr style="height: 20px;">
+        <td colspan="16" style="border: none;"></td>
+      </tr>
       <tr>
         <th>No</th>
         <th>ID Transaksi</th>
@@ -542,27 +644,36 @@ export function FullReport() {
         <th>Jam</th>
         <th>Kategori</th>
         <th>Deskripsi / Keterangan</th>
-        <th>Metode Pembayaran / Aliran</th>
+        <th>Daftar Barang / Item</th>
+        <th>Metode Pembayaran</th>
+        <th>Dompet Asal</th>
+        <th>Dompet Tujuan</th>
         <th>Tipe Aliran</th>
-        <th>Nominal Total</th>
-        <th>Keuntungan Admin / Jasa</th>
+        <th>Uang Masuk (Rp)</th>
+        <th>Uang Keluar (Rp)</th>
+        <th>Jasa / Admin (Rp)</th>
+        <th>Admin Non-Tunai?</th>
+        <th>Total Bersih (Nett) (Rp)</th>
       </tr>
     </thead>
     <tbody>
 `;
 
       searchedTransactions.forEach((tx, idx) => {
-        const cleanCode = `TRX-\${globalSequenceMap[tx.id] || tx.id}`;
+        const rowNum = 12 + idx;
+        const cleanCode = `TRX-\\${globalSequenceMap[tx.id] || tx.id}`;
         const classification = getRowClassification(tx);
         const txDateObj = new Date(tx.date);
+        
         const timeStr = txDateObj.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }).replace(/:/g, '.');
         const dateStr = txDateObj.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
 
         const srcW = wallets.find(w => w.id === tx.sourceWallet);
         const tgtW = wallets.find(w => w.id === tx.targetWallet);
+        
         let flowsText = '';
         if (srcW && tgtW) {
-          flowsText = `\${srcW.name.toUpperCase()} -> \${tgtW.name.toUpperCase()}`;
+          flowsText = `\\${srcW.name.toUpperCase()} -> \\${tgtW.name.toUpperCase()}`;
         } else if (tgtW) {
           flowsText = tgtW.name.toUpperCase();
         } else if (srcW) {
@@ -571,27 +682,54 @@ export function FullReport() {
           flowsText = 'KAS TUNAI';
         }
 
-        const totalValue = `\${classification === 'MASUK' ? '+' : '-'} Rp \${tx.total.toLocaleString('id-ID')}`;
-        const adminFeeVal = tx.adminFee && tx.adminFee > 0 ? `Rp \${tx.adminFee.toLocaleString('id-ID')}` : 'Rp 0';
+        const sourceNameText = srcW ? srcW.name.toUpperCase() : (tgtW ? '-' : 'KAS TUNAI');
+        const targetNameText = tgtW ? tgtW.name.toUpperCase() : (srcW ? '-' : 'KAS TUNAI');
+
+        const itemsText = tx.items && tx.items.length > 0 
+          ? tx.items.map(item => `\\${item.name} (\\${item.quantity}x Rp \\${item.price.toLocaleString('id-ID')})`).join('; ')
+          : '-';
+
+        const uangMasukVal = classification === 'MASUK' ? tx.total : 0;
+        const uangKeluarVal = classification === 'KELUAR' ? tx.total : 0;
+        const adminFeeVal = tx.adminFee || 0;
+        const adminNonTunaiText = tx.adminNonTunai ? 'YA' : 'TIDAK';
+
+        const rowClass = idx % 2 === 0 ? 'row-even' : 'row-odd';
 
         tableHtml += `
-      <tr>
-        <td class="text-center font-mono">\${globalSequenceMap[tx.id] || (idx + 1)}</td>
-        <td class="text-center font-mono">\${cleanCode}</td>
-        <td class="text-center">\${dateStr}</td>
-        <td class="text-center font-mono">\${timeStr}</td>
-        <td>\${(tx.category || 'UMUM').toUpperCase()}</td>
-        <td>\${tx.description || 'Penjualan POS'}</td>
-        <td>\${flowsText}</td>
-        <td class="text-center">\${classification}</td>
-        <td class="text-right font-mono">\${totalValue}</td>
-        <td class="text-right font-mono">\${adminFeeVal}</td>
+      <tr class="\\${rowClass}">
+        <td class="text-center font-mono">\\${idx + 1}</td>
+        <td class="text-center font-mono">\\${escapeHtml(cleanCode)}</td>
+        <td class="text-center">\\${escapeHtml(dateStr)}</td>
+        <td class="text-center font-mono">\\${escapeHtml(timeStr)}</td>
+        <td>\\${escapeHtml((tx.category || 'UMUM').toUpperCase())}</td>
+        <td>\\${escapeHtml(tx.description || 'Penjualan POS')}</td>
+        <td>\\${escapeHtml(itemsText)}</td>
+        <td>\\${escapeHtml(flowsText)}</td>
+        <td>\\${escapeHtml(sourceNameText)}</td>
+        <td>\\${escapeHtml(targetNameText)}</td>
+        <td class="text-center font-bold">\\${escapeHtml(classification)}</td>
+        <td class="text-right font-mono" x:num style="mso-number-format:'\\\\\\\\Rp* \\\\\\\\#\\\\\\\\,\\\\\\\\#\\\\\\\\#0';">\\${uangMasukVal}</td>
+        <td class="text-right font-mono" x:num style="mso-number-format:'\\\\\\\\Rp* \\\\\\\\#\\\\\\\\,\\\\\\\\#\\\\\\\\#0';">\\${uangKeluarVal}</td>
+        <td class="text-right font-mono" x:num style="mso-number-format:'\\\\\\\\Rp* \\\\\\\\#\\\\\\\\,\\\\\\\\#\\\\\\\\#0';">\\${adminFeeVal}</td>
+        <td class="text-center">\\${adminNonTunaiText}</td>
+        <td class="text-right font-mono font-bold" style="mso-number-format:'\\\\\\\\Rp* \\\\\\\\#\\\\\\\\,\\\\\\\\#\\\\\\\\#0';">=L\\${rowNum}-M\\${rowNum}+N\\${rowNum}</td>
       </tr>
 `;
       });
 
       tableHtml += `
     </tbody>
+    <tfoot>
+      <tr>
+        <td colspan="11" class="footer-label">TOTAL KESELURUHAN (FORMULA)</td>
+        <td class="text-right footer-value" style="mso-number-format:'\\\\Rp* \\\\#\\\\,\\\\#\\\\#0';">=SUM(L12:L\\${endRow})</td>
+        <td class="text-right footer-value" style="mso-number-format:'\\\\Rp* \\\\#\\\\,\\\\#\\\\#0';">=SUM(M12:M\\${endRow})</td>
+        <td class="text-right footer-value" style="mso-number-format:'\\\\Rp* \\\\#\\\\,\\\\#\\\\#0';">=SUM(N12:N\\${endRow})</td>
+        <td class="text-center footer-value">-</td>
+        <td class="text-right footer-value" style="mso-number-format:'\\\\Rp* \\\\#\\\\,\\\\#\\\\#0';">=SUM(P12:P\\${endRow})</td>
+      </tr>
+    </tfoot>
   </table>
 </body>
 </html>

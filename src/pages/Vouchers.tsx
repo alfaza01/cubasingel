@@ -773,101 +773,139 @@ export const VoucherView: React.FC<VoucherViewProps> = (props) => {
         return
       }
 
-      // We generate a beautifully styled HTML file specifying column widths, nowrap table cells, grid lines, and classic styling.
-      const sheetName = 'Daftar_Inventaris_Voucher'
-      const fileName = `Inventaris_${new Date().toISOString().split('T')[0]}.xls`
+      const sheetName = 'Inventaris_Voucher'
+      const fileName = `Laporan_Inventaris_Voucher_${new Date().toISOString().split('T')[0]}.xls`
+      const printDateStr = new Date().toLocaleString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+      const isOwner = props.kasirRole === 'owner';
+      
+      const escapeHtml = (unsafe: string) => {
+        return (unsafe || '').toString()
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#039;");
+      };
+
+      const endRow = filteredItems.length + 11;
 
       let tableHtml = `
 <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
 <head>
 <meta charset="utf-8" />
-<!--[if gte mso 9]>
-<xml>
- <x:ExcelWorkbook>
-  <x:ExcelWorksheets>
-   <x:ExcelWorksheet>
-    <x:Name>\${sheetName}</x:Name>
-    <x:WorksheetOptions>
-     <x:DisplayGridlines/>
-    </x:WorksheetOptions>
-   </x:ExcelWorksheet>
-  </x:ExcelWorksheets>
- </x:ExcelWorkbook>
-</xml>
-<![endif]-->
 <style>
-  table { border-collapse: collapse; margin-top: 10px; }
-  th, td { border: 1px solid #cbd5e1; padding: 8px 10px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 11px; white-space: nowrap !important; }
-  th { background-color: #4f46e5; color: #ffffff; font-weight: bold; text-align: center; font-size: 11px; }
+  body { font-family: 'Arial', sans-serif; }
+  table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+  th, td { border: 1px solid #e2e8f0; padding: 10px; font-size: 11px; vertical-align: middle; }
+  th { background-color: #1e3a8a; color: #ffffff; font-weight: bold; text-align: center; text-transform: uppercase; }
   .text-center { text-align: center; }
   .text-right { text-align: right; }
-  .font-mono { font-family: Consolas, monospace; }
-  .header-info { font-family: 'Segoe UI', sans-serif; font-size: 14px; font-weight: bold; margin-bottom: 5px; color: #1e293b; }
-  .sub-info { font-family: 'Segoe UI', sans-serif; font-size: 11px; margin-bottom: 15px; color: #64748b; }
+  .font-mono { font-family: 'Courier New', Courier, monospace; }
+  .font-bold { font-weight: bold; }
+  .title-header { font-size: 20px; font-weight: bold; color: #1e3a8a; border: none; text-align: left; }
+  .title-addr { font-size: 11px; color: #64748b; border: none; text-align: left; }
+  .summary-label { font-weight: bold; background-color: #f8fafc; color: #334155; }
+  .summary-value { font-weight: bold; color: #1e3a8a; }
+  .row-even { background-color: #ffffff; }
+  .row-odd { background-color: #f8fafc; }
 </style>
 </head>
 <body>
-  <div class="header-info">LAPORAN INVENTARIS PRODUK VOUCHER & KARTU</div>
-  <div class="sub-info">Dicetak pada: \${new Date().toLocaleString('id-ID')} | Total Item: \${filteredItems.length}</div>
-  
   <table>
     <colgroup>
       <col width="50" />
-      <col width="300" />
+      <col width="280" />
+      <col width="120" />
       <col width="110" />
       <col width="110" />
       <col width="110" />
-      <col width="110" />
-      <col width="90" />
-      <col width="90" />
+      <col width="80" />
       <col width="100" />
+      <col width="80" />
+      <col width="120" />
     </colgroup>
-    <thead>
+    <tbody>
+      <tr>
+        <td colspan="10" class="title-header">LAPORAN INVENTARIS PRODUK VOUCHER &amp; KARTU</td>
+      </tr>
+      <tr>
+        <td colspan="10" class="title-addr">Toko / Unit: \${escapeHtml(props.storeName || 'KASIR CUBA')}</td>
+      </tr>
+      <tr style="height: 15px;">
+        <td colspan="10" style="border: none;"></td>
+      </tr>
+      <tr>
+        <td style="border: none;"></td>
+        <td class="summary-label">Tanggal Cetak</td>
+        <td class="summary-value" colspan="2">\${printDateStr}</td>
+        <td style="border: none;" colspan="2"></td>
+        <td class="summary-label" colspan="2">Total Produk Aktif</td>
+        <td class="text-center font-mono summary-value font-bold" colspan="2">\${filteredItems.length} Item</td>
+      </tr>
+      <tr>
+        <td style="border: none;"></td>
+        <td class="summary-label">Total Harga Modal</td>
+        <td class="text-right font-mono summary-value font-bold" colspan="2" style="mso-number-format:'\\\\Rp* \\\\#\\\\,\\\\#\\\\#0';">\${isOwner ? \`=SUM(D12:D\${endRow})\` : '-'}</td>
+        <td style="border: none;" colspan="2"></td>
+        <td class="summary-label" colspan="2">Total Harga Jual</td>
+        <td class="text-right font-mono summary-value font-bold" colspan="2" style="mso-number-format:'\\\\Rp* \\\\#\\\\,\\\\#\\\\#0';">=SUM(E12:E\${endRow})</td>
+      </tr>
+      <tr>
+        <td style="border: none;"></td>
+        <td class="summary-label">Total Stok Akhir Keseluruhan</td>
+        <td class="text-center font-mono summary-value font-bold" colspan="2">=SUM(I12:I\${endRow})</td>
+        <td style="border: none;" colspan="2"></td>
+        <td class="summary-label" colspan="2">Total Nilai Aset / Valuasi</td>
+        <td class="text-right font-mono summary-value font-bold" colspan="2" style="mso-number-format:'\\\\Rp* \\\\#\\\\,\\\\#\\\\#0';">\${isOwner ? \`=SUM(J12:J\${endRow})\` : '-'}</td>
+      </tr>
+      <tr style="height: 15px;">
+        <td colspan="10" style="border: none;"></td>
+      </tr>
       <tr>
         <th>No</th>
         <th>Nama Produk Voucher</th>
-        <th>Provider</th>
-        <th>Harga Modal</th>
-        <th>Harga Jual</th>
-        <th>Profit</th>
+        <th>Provider / Kategori</th>
+        <th>Harga Modal (Rp)</th>
+        <th>Harga Jual (Rp)</th>
+        <th>Profit (Rp)</th>
         <th>Stok Awal</th>
-        <th>QRIS</th>
+        <th>Terjual Non-Tunai</th>
         <th>Stok Akhir</th>
+        <th>Nilai Aset Modal</th>
       </tr>
-    </thead>
-    <tbody>
-`
+`;
 
       filteredItems.forEach((item, idx) => {
-        const isProfit = Math.max(0, item.price - (item.costPrice || 0))
-        const modalStr = props.kasirRole === 'owner' ? `Rp \${item.costPrice?.toLocaleString('id-ID')}` : '🔒'
-        const priceStr = `Rp \${item.price.toLocaleString('id-ID')}`
-        const profitStr = props.kasirRole === 'owner' ? `Rp \${isProfit.toLocaleString('id-ID')}` : '🔒'
-        const awalNum = getProductAwalStock(item)
-        const qrisNum = nontunaiSales[item.id] || 0
-        const akhirNum = getProductAkhirStock(item)
+        const modalVal = item.costPrice || 0;
+        const priceVal = item.price || 0;
+        const rowNum = 12 + idx;
+        const awalNum = getProductAwalStock(item);
+        const qrisNum = nontunaiSales[item.id] || 0;
+        const akhirNum = getProductAkhirStock(item);
+        const bgClass = idx % 2 === 0 ? 'row-even' : 'row-odd';
 
         tableHtml += `
-      <tr>
+      <tr class="\${bgClass}">
         <td class="text-center font-mono">\${idx + 1}</td>
-        <td>\${(item.name || '').toUpperCase()}</td>
-        <td class="text-center">\${(item.brand || '').toUpperCase()}</td>
-        <td class="text-right font-mono">\${modalStr}</td>
-        <td class="text-right font-mono">\${priceStr}</td>
-        <td class="text-right font-mono">\${profitStr}</td>
-        <td class="text-center font-mono">\${awalNum}</td>
-        <td class="text-center font-mono">\${qrisNum}</td>
-        <td class="text-center font-mono">\${akhirNum}</td>
+        <td>\${escapeHtml((item.name || '').toUpperCase())}</td>
+        <td class="text-center">\${escapeHtml((item.brand || '').toUpperCase())}</td>
+        <td class="text-right font-mono" \${isOwner ? 'x:num' : ''} style="\${isOwner ? "mso-number-format:'\\\\\\\\Rp* \\\\\\\\#\\\\\\\\,\\\\\\\\#\\\\\\\\#0';" : ''}">\${isOwner ? modalVal : 'LOCKED'}</td>
+        <td class="text-right font-mono" x:num style="mso-number-format:'\\\\\\\\Rp* \\\\\\\\#\\\\\\\\,\\\\\\\\#\\\\\\\\#0';">\${priceVal}</td>
+        <td class="text-right font-mono font-bold" \${isOwner ? 'x:num' : ''} style="\${isOwner ? "mso-number-format:'\\\\\\\\Rp* \\\\\\\\#\\\\\\\\,\\\\\\\\#\\\\\\\\#0';" : ''}">\${isOwner ? \`=E\${rowNum}-D\${rowNum}\` : 'LOCKED'}</td>
+        <td class="text-center font-mono" x:num>\${awalNum}</td>
+        <td class="text-center font-mono" x:num>\${qrisNum}</td>
+        <td class="text-center font-mono font-bold" x:num>\${akhirNum}</td>
+        <td class="text-right font-mono font-bold" \${isOwner ? 'x:num' : ''} style="\${isOwner ? "mso-number-format:'\\\\\\\\Rp* \\\\\\\\#\\\\\\\\,\\\\\\\\#\\\\\\\\#0';" : ''}">\${isOwner ? \`=D\${rowNum}*I\${rowNum}\` : 'LOCKED'}</td>
       </tr>
-`
-      })
+`;
+      });
 
       tableHtml += `
     </tbody>
   </table>
 </body>
 </html>
-`
+`;
 
       const blob = new Blob([tableHtml], { type: 'application/vnd.ms-excel;charset=utf-8;' })
       const url = URL.createObjectURL(blob)

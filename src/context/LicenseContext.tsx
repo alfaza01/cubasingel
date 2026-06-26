@@ -16,6 +16,7 @@ interface LicenseContextType {
   updateWaNumber: (num: string) => Promise<void>;
   usedLicenses: any[];
   unusedLicenses: any[];
+  syncLicenses: () => Promise<void>;
   
   // Custom Referral System Capabilities
   referralCode: string | null;
@@ -147,6 +148,19 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
     return code;
   };
 
+  const syncLicenses = async () => {
+    if (!isAdmin) return;
+    try {
+      const { data: allLicenses } = await supabase.from('licenses').select('*');
+      if (allLicenses) {
+        setUsedLicenses(allLicenses.filter(l => l.used));
+        setUnusedLicenses(allLicenses.filter(l => !l.used));
+      }
+    } catch (err) {
+      console.error('Failed to sync licenses', err);
+    }
+  };
+
   const updateWaNumber = async (num: string) => { setWaNumber(num); };
   
   const registerReferralCode = async () => ({ success: false, message: 'Not implemented.' });
@@ -184,6 +198,7 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
       updateWaNumber,
       usedLicenses,
       unusedLicenses,
+      syncLicenses,
       referralCode: null,
       referralStats: null,
       registerReferralCode,

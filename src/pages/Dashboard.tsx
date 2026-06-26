@@ -781,8 +781,8 @@ export function Dashboard() {
           />
           {/* Panel */}
           <div className="fixed top-0 right-0 z-[210] h-full w-[85%] max-w-[320px] bg-white dark:bg-slate-900 shadow-2xl animate-slide-in-right flex flex-col print:hidden">
-             <div className="bg-[#1e3a8a] text-white p-6 rounded-bl-3xl shadow-md relative">
-                <button onClick={() => setShowSidePanel(false)} className="absolute top-4 right-4 text-white/70 hover:text-white p-2">
+             <div className="bg-[#1e3a8a] text-white pt-12 pb-6 px-6 rounded-bl-3xl shadow-md relative">
+                <button onClick={() => setShowSidePanel(false)} className="absolute top-10 right-4 text-white/70 hover:text-white p-2">
                    <X size={20} strokeWidth={2.5} />
                 </button>
                 <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center p-2 mb-4 shadow-sm">

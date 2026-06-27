@@ -161,6 +161,7 @@ CREATE TABLE store_settings (
   ui_theme TEXT DEFAULT 'light',
   ui_layout TEXT DEFAULT 'hp',
   auto_reset_laci_kasir BOOLEAN DEFAULT FALSE,
+  auto_reset_aset_digital BOOLEAN DEFAULT FALSE,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 ALTER TABLE store_settings ENABLE ROW LEVEL SECURITY;

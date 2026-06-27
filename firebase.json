@@ -10,7 +10,7 @@
       {
         "source": "/**",
         "destination": "https://kasirkonter.my.id",
-        "type": 301
+        "type": 302
       }
     ],
     "rewrites": [

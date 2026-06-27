@@ -142,7 +142,33 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [wallets, setWallets] = useState<WalletNode[]>(() => {
     try {
       const saved = localStorage.getItem('store_wallets');
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed: WalletNode[] = JSON.parse(saved);
+        // Deduplicate wallets by name
+        const uniqueWalletsMap = new Map<string, WalletNode>();
+        let hasDuplicates = false;
+
+        parsed.forEach(w => {
+          const existing = uniqueWalletsMap.get(w.name);
+          if (existing) {
+            hasDuplicates = true;
+            // Keep the one with higher balance
+            if (w.balance > existing.balance || w.realBalance > existing.realBalance) {
+              uniqueWalletsMap.set(w.name, w);
+            }
+          } else {
+            uniqueWalletsMap.set(w.name, w);
+          }
+        });
+
+        if (hasDuplicates) {
+          const deduplicated = Array.from(uniqueWalletsMap.values());
+          localStorage.setItem('store_wallets', JSON.stringify(deduplicated));
+          return deduplicated;
+        }
+
+        return parsed;
+      }
     } catch (e) {
       console.error(e);
     }

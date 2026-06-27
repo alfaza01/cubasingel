@@ -219,14 +219,28 @@ async function pullFromSupabase(uid: string) {
     // Pull Wallets
     const { data: wallets } = await supabase.from('wallets').select('*').eq('user_id', uid);
     if (wallets && wallets.length > 0) {
-      notifyChange('store_wallets', wallets.map(w => ({
+      const mappedWallets = wallets.map(w => ({
         id: w.id.startsWith(`${uid}_`) ? w.id.substring(uid.length + 1) : w.id,
         name: w.name,
         balance: Number(w.balance),
         realBalance: Number(w.real_balance),
         icon: w.icon,
         isHidden: w.is_hidden
-      })));
+      }));
+      
+      const uniqueWalletsMap = new Map();
+      mappedWallets.forEach(w => {
+        const existing = uniqueWalletsMap.get(w.name);
+        if (existing) {
+          if (w.balance > existing.balance || w.realBalance > existing.realBalance) {
+            uniqueWalletsMap.set(w.name, w);
+          }
+        } else {
+          uniqueWalletsMap.set(w.name, w);
+        }
+      });
+      
+      notifyChange('store_wallets', Array.from(uniqueWalletsMap.values()));
     }
 
     // Pull Kasbons

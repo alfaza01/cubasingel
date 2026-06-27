@@ -478,7 +478,7 @@ export function FullReport() {
     }
   };
 
-  const handleExportTransactionsToExcel = () => {
+  const handleExportTransactionsToExcel = async () => {
     try {
       if (searchedTransactions.length === 0) {
         alert('Tidak ada data transaksi untuk diekspor!');
@@ -735,15 +735,31 @@ export function FullReport() {
 </html>
 `;
 
-      const blob = new Blob([tableHtml], { type: 'application/vnd.ms-excel;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', fileName);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      const isAndroid = typeof navigator !== 'undefined' && /android/i.test(navigator.userAgent);
+      if (isAndroid) {
+        const base64Data = btoa(unescape(encodeURIComponent(tableHtml)));
+        const savedFile = await Filesystem.writeFile({
+          path: fileName,
+          data: base64Data,
+          directory: Directory.Cache
+        });
+        await Share.share({
+          title: 'Laporan Transaksi Excel',
+          text: 'Laporan Transaksi Toko',
+          url: savedFile.uri,
+          dialogTitle: 'Simpan / Bagikan Laporan Excel',
+        });
+      } else {
+        const blob = new Blob([tableHtml], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', fileName);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }
     } catch (err: any) {
       console.error(err);
       alert('Gagal mengekspor Excel: ' + err.message);

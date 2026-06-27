@@ -36,10 +36,8 @@ export function Account() {
     restoreFromBackup,
     uiLayout,
     uiTheme,
-    autoResetLaciKasir,
     setUiLayout,
     setUiTheme,
-    setAutoResetLaciKasir,
     autoTextPresets,
     updateAutoTextPresets
   } = useStore();
@@ -674,9 +672,9 @@ export function Account() {
     setResetConfirmText("");
   };
 
-  const confirmFactoryReset = () => {
+  const confirmFactoryReset = async () => {
     if (resetConfirmText === 'HAPUS') {
-      factoryReset();
+      await factoryReset();
       setShowResetModal(false);
       setSuccessModal({ show: true, title: "RESET PABRIK BERHASIL", message: "Aplikasi telah dikembalikan ke kondisi awal. Semua data transaksi & catatan dihapus." });
     } else {
@@ -689,9 +687,9 @@ export function Account() {
     setResetConfirmText("");
   };
 
-  const confirmResetSaldo = () => {
+  const confirmResetSaldo = async () => {
     if (resetConfirmText === 'NOL') {
-      resetSaldo();
+      await resetSaldo();
       setShowResetSaldoModal(false);
       setSuccessModal({ show: true, title: "RESET SALDO BERHASIL", message: "Semua saldo aset dan laci kasir telah berhasil direset menjadi 0." });
     } else {
@@ -1645,23 +1643,7 @@ export function Account() {
 
       {/* SYSTEM PREFERENCES & ACCOUNT */}
       <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden divide-y divide-slate-100">
-        <button 
-          onClick={() => setAutoResetLaciKasir(!autoResetLaciKasir)} 
-          className="w-full flex items-center justify-between p-4 text-slate-700 dark:text-slate-200 active:bg-slate-50 dark:bg-slate-900 transition-colors cursor-pointer"
-        >
-          <div className="flex items-center gap-3">
-            <RefreshCcw size={16} className={autoResetLaciKasir ? "text-emerald-500" : "text-slate-400"} /> 
-            <div className="text-left">
-               <span className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase">Tutup Buku Laci Harian</span>
-               <p className="text-[9px] text-slate-500 max-w-[200px] mt-0.5 leading-tight">Mereset saldo <strong>Laci Kasir</strong> menjadi 0 setiap berganti hari / buka toko besok.</p>
-            </div>
-          </div>
-          <div className={`relative w-12 h-6 md:w-14 md:h-7 rounded-full p-1 transition-all duration-300 ease-in-out flex items-center shadow-inner ${autoResetLaciKasir ? 'bg-gradient-to-r from-emerald-500 to-teal-500 border border-emerald-400' : 'bg-slate-200 dark:bg-slate-700 border border-slate-300 dark:border-slate-600'}`}>
-            <span className={`text-[8px] font-black absolute transition-opacity duration-300 uppercase ${autoResetLaciKasir ? 'opacity-100 text-white left-2' : 'opacity-0 right-2'}`}>ON</span>
-            <div className={`bg-white w-4 h-4 md:w-5 md:h-5 rounded-full shadow-md transform transition-transform duration-300 ease-out z-10 ${autoResetLaciKasir ? 'translate-x-[22px] md:translate-x-[26px]' : 'translate-x-0'}`}></div>
-            <span className={`text-[8px] font-black absolute transition-opacity duration-300 uppercase ${autoResetLaciKasir ? 'opacity-0 left-2' : 'opacity-100 text-slate-500 dark:text-slate-400 right-2'}`}>OFF</span>
-          </div>
-        </button>
+
         <button className="w-full flex items-center justify-between p-4 text-slate-700 dark:text-slate-200 active:bg-slate-50 dark:bg-slate-900 transition-colors">
           <div className="flex items-center gap-3">
             <Lock size={16} className="text-slate-400" /> 

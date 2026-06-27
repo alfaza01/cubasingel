@@ -76,7 +76,7 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
           .from('licenses')
           .select('*')
           .eq('used_by', user.id)
-          .single();
+          .maybeSingle();
         if (isAdmin || (!error && data)) {
           setIsPro(true);
           localStorage.setItem('kasir_is_pro', 'true');

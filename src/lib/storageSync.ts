@@ -28,7 +28,8 @@ export async function initStorageSync(uid: string) {
       const settingKeys = [
         'store_name', 'store_logo', 'store_subname', 'store_cashier', 'store_address',
         'store_announcement', 'store_promo_text', 'store_wisdom_text',
-        'store_rotating_words_text', 'ui_theme', 'ui_layout', 'auto_reset_laci_kasir'
+        'store_rotating_words_text', 'ui_theme', 'ui_layout', 'auto_reset_laci_kasir',
+        'auto_reset_aset_digital'
       ];
 
       if (syncKeys.includes(key) || settingKeys.includes(key)) {
@@ -46,7 +47,11 @@ function schedulePush() {
   }, 2000); // 2 seconds debounce
 }
 
-async function pushToSupabase() {
+export async function pushToSupabase() {
+  if (syncTimeout) {
+    clearTimeout(syncTimeout);
+    syncTimeout = null;
+  }
   if (!currentUserId || pendingSync.size === 0) return;
   const keysToSync = Array.from(pendingSync);
   pendingSync.clear();
@@ -88,7 +93,7 @@ async function pushToSupabase() {
       } else if (key === 'store_wallets') {
         const items = JSON.parse(rawValue);
         const mapped = items.map((w: any) => ({
-          id: w.id,
+          id: w.id.startsWith(`${currentUserId}_`) ? w.id : `${currentUserId}_${w.id}`,
           user_id: currentUserId,
           name: w.name,
           balance: w.balance,
@@ -140,7 +145,7 @@ async function pushToSupabase() {
       } else if (key === 'store_presets') {
         const items = JSON.parse(rawValue);
         const mapped = items.map((p: any) => ({
-          id: p.id,
+          id: p.id.startsWith(`${currentUserId}_`) ? p.id : `${currentUserId}_${p.id}`,
           user_id: currentUserId,
           category: p.category,
           label: p.label,
@@ -152,7 +157,7 @@ async function pushToSupabase() {
       } else if (key === 'store_autotexts') {
         const items = JSON.parse(rawValue);
         const mapped = items.map((a: any) => ({
-          id: a.id,
+          id: a.id.startsWith(`${currentUserId}_`) ? a.id : `${currentUserId}_${a.id}`,
           user_id: currentUserId,
           keterangan: a.keterangan,
           harga_modal: a.hargaModal,
@@ -174,6 +179,7 @@ async function pushToSupabase() {
         if (key === 'ui_theme') payload.ui_theme = rawValue;
         if (key === 'ui_layout') payload.ui_layout = rawValue;
         if (key === 'auto_reset_laci_kasir') payload.auto_reset_laci_kasir = rawValue === 'true';
+        if (key === 'auto_reset_aset_digital') payload.auto_reset_aset_digital = rawValue === 'true';
         
         await supabase.from('store_settings').upsert(payload);
       }
@@ -214,7 +220,12 @@ async function pullFromSupabase(uid: string) {
     const { data: wallets } = await supabase.from('wallets').select('*').eq('user_id', uid);
     if (wallets && wallets.length > 0) {
       notifyChange('store_wallets', wallets.map(w => ({
-        id: w.id, name: w.name, balance: w.balance, realBalance: w.real_balance, icon: w.icon, isHidden: w.is_hidden
+        id: w.id.startsWith(`${uid}_`) ? w.id.substring(uid.length + 1) : w.id,
+        name: w.name,
+        balance: Number(w.balance),
+        realBalance: Number(w.real_balance),
+        icon: w.icon,
+        isHidden: w.is_hidden
       })));
     }
 
@@ -245,6 +256,30 @@ async function pullFromSupabase(uid: string) {
       })));
     }
 
+    // Pull Presets
+    const { data: presets } = await supabase.from('presets').select('*').eq('user_id', uid);
+    if (presets && presets.length > 0) {
+      notifyChange('store_presets', presets.map(p => ({
+        id: p.id.startsWith(`${uid}_`) ? p.id.substring(uid.length + 1) : p.id,
+        category: p.category,
+        label: p.label,
+        nominal: Number(p.nominal),
+        hargaJual: Number(p.harga_jual),
+        adminFee: Number(p.admin_fee)
+      })));
+    }
+
+    // Pull AutoTexts
+    const { data: autotexts } = await supabase.from('autotexts').select('*').eq('user_id', uid);
+    if (autotexts && autotexts.length > 0) {
+      notifyChange('store_autotexts', autotexts.map(a => ({
+        id: a.id.startsWith(`${uid}_`) ? a.id.substring(uid.length + 1) : a.id,
+        keterangan: a.keterangan,
+        hargaModal: Number(a.harga_modal),
+        hargaJual: Number(a.harga_jual)
+      })));
+    }
+
     // Pull Settings
     const { data: settings } = await supabase.from('store_settings').select('*').eq('user_id', uid).single();
     if (settings) {
@@ -260,6 +295,7 @@ async function pullFromSupabase(uid: string) {
       if (settings.ui_theme) notifyChange('ui_theme', settings.ui_theme);
       if (settings.ui_layout) notifyChange('ui_layout', settings.ui_layout);
       if (settings.auto_reset_laci_kasir !== null) notifyChange('auto_reset_laci_kasir', String(settings.auto_reset_laci_kasir));
+      if (settings.auto_reset_aset_digital !== null) notifyChange('auto_reset_aset_digital', String(settings.auto_reset_aset_digital));
     }
   } catch (err) {
     console.error('Error pulling from Supabase:', err);
@@ -277,4 +313,22 @@ export function stopStorageSync() {
     syncTimeout = null;
   }
   pendingSync.clear();
+}
+
+export function getCurrentUserId() {
+  return currentUserId;
+}
+
+export async function syncFactoryReset() {
+  if (!currentUserId) return;
+  try {
+    console.log('⚡ Performing immediate factory reset sync to Supabase...');
+    await Promise.all([
+      supabase.from('transactions').delete().eq('user_id', currentUserId),
+      supabase.from('kasbons').delete().eq('user_id', currentUserId),
+      supabase.from('notes').delete().eq('user_id', currentUserId)
+    ]);
+  } catch (err) {
+    console.error('Error performing factory reset sync:', err);
+  }
 }

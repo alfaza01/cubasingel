@@ -13,7 +13,7 @@ export function cn(...classes: (string | undefined | null | false)[]) {
 }
 
 export function Assets() {
-  const { transactions, wallets, balance, addTransaction, updateWalletRealBalance, updateWalletsList, storeName, subStoreName, autoResetAsetDigital, setAutoResetAsetDigital } = useStore();
+  const { transactions, wallets, balance, addTransaction, updateWalletRealBalance, updateWalletsList, storeName, subStoreName, autoResetLaciKasir, setAutoResetLaciKasir } = useStore();
   const { isPro, isTrialActive, trialDaysLeft, waNumber } = useLicense();
   const [now, setNow] = useState(new Date());
 
@@ -235,32 +235,32 @@ export function Assets() {
           </button>
         </div>
 
-        {/* SETTING AUTO RESET ASET DIGITAL */}
+        {/* SETTING AUTO RESET LACI KASIR */}
         <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 mb-5">
            <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
-                 <div className={cn("w-10 h-10 rounded-full flex items-center justify-center shrink-0 transition-colors", autoResetAsetDigital ? "bg-blue-100 text-blue-600" : "bg-slate-100 dark:bg-slate-700 text-slate-400")}>
-                    <RefreshCcw size={18} className={autoResetAsetDigital ? "animate-[spin_4s_linear_infinite]" : ""} />
+                 <div className={cn("w-10 h-10 rounded-full flex items-center justify-center shrink-0 transition-colors", autoResetLaciKasir ? "bg-blue-100 text-blue-600" : "bg-slate-100 dark:bg-slate-700 text-slate-400")}>
+                    <RefreshCcw size={18} className={autoResetLaciKasir ? "animate-[spin_4s_linear_infinite]" : ""} />
                  </div>
                  <div>
                     <h3 className="text-[11px] font-black text-slate-800 dark:text-slate-100 uppercase tracking-widest leading-none mb-1">
-                       Reset Aset Otomatis
+                       Tutup Buku Laci Harian
                     </h3>
                     <p className="text-[9px] font-medium text-slate-500 dark:text-slate-400 leading-tight">
-                       Jadikan saldo {autoResetAsetDigital ? <span className="text-blue-500 font-bold">Rp 0 (NOL)</span> : "Rp 0 (NOL)"} setiap berganti hari
+                       Mereset saldo Laci Kasir menjadi 0 setiap berganti hari / buka toko besok.
                     </p>
                  </div>
               </div>
               <button 
-                 onClick={() => setAutoResetAsetDigital(!autoResetAsetDigital)}
+                 onClick={() => setAutoResetLaciKasir(!autoResetLaciKasir)}
                  className={cn(
                     "relative w-12 h-6 md:w-14 md:h-7 rounded-full p-1 transition-all duration-300 ease-in-out flex items-center shadow-inner shrink-0 cursor-pointer",
-                    autoResetAsetDigital ? 'bg-gradient-to-r from-blue-500 to-indigo-500 border border-blue-400' : 'bg-slate-200 dark:bg-slate-700 border border-slate-300 dark:border-slate-600'
+                    autoResetLaciKasir ? 'bg-gradient-to-r from-blue-500 to-indigo-500 border border-blue-400' : 'bg-slate-200 dark:bg-slate-700 border border-slate-300 dark:border-slate-600'
                  )}
               >
-                 <span className={cn("text-[8px] font-black absolute transition-opacity duration-300 uppercase", autoResetAsetDigital ? 'opacity-100 text-white left-2' : 'opacity-0 right-2')}>ON</span>
-                 <div className={cn("bg-white w-4 h-4 md:w-5 md:h-5 rounded-full shadow-md transform transition-transform duration-300 ease-out z-10", autoResetAsetDigital ? 'translate-x-[22px] md:translate-x-[26px]' : 'translate-x-0')}></div>
-                 <span className={cn("text-[8px] font-black absolute transition-opacity duration-300 uppercase", autoResetAsetDigital ? 'opacity-0 left-2' : 'opacity-100 text-slate-500 dark:text-slate-400 right-2')}>OFF</span>
+                 <span className={cn("text-[8px] font-black absolute transition-opacity duration-300 uppercase", autoResetLaciKasir ? 'opacity-100 text-white left-2' : 'opacity-0 right-2')}>ON</span>
+                 <div className={cn("bg-white w-4 h-4 md:w-5 md:h-5 rounded-full shadow-md transform transition-transform duration-300 ease-out z-10", autoResetLaciKasir ? 'translate-x-[22px] md:translate-x-[26px]' : 'translate-x-0')}></div>
+                 <span className={cn("text-[8px] font-black absolute transition-opacity duration-300 uppercase", autoResetLaciKasir ? 'opacity-0 left-2' : 'opacity-100 text-slate-500 dark:text-slate-400 right-2')}>OFF</span>
               </button>
            </div>
         </div>

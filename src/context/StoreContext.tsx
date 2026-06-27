@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { Product, Transaction, CartItem, WalletNode, ContactNode, KasbonNode, NoteNode, TransactionPreset, AutoTextPreset } from '../types';
 import { format } from 'date-fns';
+import { pushToSupabase, getCurrentUserId, syncFactoryReset } from '../lib/storageSync';
 
 interface StoreContextType {
   products: Product[];
@@ -50,8 +51,8 @@ interface StoreContextType {
   updateWisdomText: (text: string) => void;
   updateRotatingWordsText: (text: string) => void;
   restoreFromBackup: (backupData: string) => void;
-  factoryReset: () => void;
-  resetSaldo: () => void;
+  factoryReset: () => Promise<void>;
+  resetSaldo: () => Promise<void>;
   uiTheme: string;
   uiLayout: string;
   autoResetLaciKasir: boolean;
@@ -190,6 +191,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         if (key === 'store_subname') setSubStoreNameState(rawValue || 'Aplikasi Kasir Toko');
         if (key === 'store_cashier') setCashierNameState(rawValue || 'Kasir Satu');
         if (key === 'store_address') setStoreAddressState(rawValue || 'Jl. Contoh Alamat No. 123, Kota');
+        if (key === 'store_announcement') setAnnouncementTextState(rawValue || '');
+        if (key === 'store_promo_text') setPromoTextState(rawValue || '');
+        if (key === 'store_wisdom_text') setWisdomTextState(rawValue || '');
+        if (key === 'store_rotating_words_text') setRotatingWordsTextState(rawValue || '');
+        if (key === 'ui_theme') setUiThemeState(rawValue || 'light');
+        if (key === 'ui_layout') setUiLayoutState(rawValue || 'hp');
+        if (key === 'auto_reset_laci_kasir') setAutoResetLaciKasirState(rawValue === 'true');
+        if (key === 'auto_reset_aset_digital') setAutoResetAsetDigitalState(rawValue === 'true');
       }
     };
     window.addEventListener('firebase-storage-sync', handleStorageChange);
@@ -331,7 +340,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       // Jika kedua toggle mati, tidak perlu melakukan apa-apa
       if (!shouldResetLaci && !shouldResetDigital) return;
 
-      const today         = new Date().toLocaleDateString('en-CA'); // 'YYYY-MM-DD'
+      // Platform-independent manual date format YYYY-MM-DD
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      const today = `${year}-${month}-${day}`;
+
       const lastResetDate = localStorage.getItem('store_last_reset_date');
 
       // Jika belum pernah di-set, catat hari ini sebagai acuan pertama
@@ -371,7 +386,32 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     // Periksa setiap menit apakah hari sudah berganti
     const intervalId = setInterval(performDailyReset, 60000);
 
-    return () => clearInterval(intervalId);
+    // Untuk platform Native (Capacitor), jalankan reset harian ketika aplikasi kembali aktif/resume dari background
+    let appStateListener: any = null;
+    const initNativeListener = async () => {
+      try {
+        const { Capacitor } = await import('@capacitor/core');
+        const { App: CapacitorApp } = await import('@capacitor/app');
+        if (Capacitor.isNativePlatform()) {
+          appStateListener = await CapacitorApp.addListener('appStateChange', (state) => {
+            if (state.isActive) {
+              console.log('📱 App resumed, checking daily reset...');
+              performDailyReset();
+            }
+          });
+        }
+      } catch (e) {
+        console.warn('Capacitor App listener not available:', e);
+      }
+    };
+    initNativeListener();
+
+    return () => {
+      clearInterval(intervalId);
+      if (appStateListener) {
+        appStateListener.then((listener: any) => listener.remove()).catch(() => {});
+      }
+    };
   // Hanya dijalankan ulang jika salah satu toggle berubah
   }, [autoResetLaciKasir, autoResetAsetDigital]);
 
@@ -797,7 +837,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     saveTransactions(updatedTransactions);
   };
 
-  const factoryReset = () => {
+  const factoryReset = async () => {
+    const uid = getCurrentUserId();
+    if (uid) {
+      await syncFactoryReset();
+    }
+
     // 1. Remove all transactions, kasbons, notes
     localStorage.removeItem('store_transactions');
     localStorage.removeItem('store_kasbons');
@@ -813,14 +858,23 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setKasbons([]);
     setNotes([]);
     setWallets(clearedWallets);
+
+    if (uid) {
+      await pushToSupabase();
+    }
   };
 
-  const resetSaldo = () => {
+  const resetSaldo = async () => {
     const currentWallets = wallets || [];
     const clearedWallets = currentWallets.map(w => ({ ...w, balance: 0, realBalance: 0 }));
     localStorage.setItem('store_wallets', JSON.stringify(clearedWallets));
     
     setWallets(clearedWallets);
+
+    const uid = getCurrentUserId();
+    if (uid) {
+      await pushToSupabase();
+    }
   };
 
   const restoreFromBackup = (backupData: string) => {

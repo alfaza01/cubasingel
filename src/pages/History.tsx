@@ -69,12 +69,19 @@ export function History() {
     return type === 'INCOME' ? 'MASUK' : 'KELUAR';
   };
 
+  const getTodayString = () => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   // Search & Filter state
   const [filter, setFilter] = useState('Semua');
   const [searchQuery, setSearchQuery] = useState('');
-  const [checkedCategories, setCheckedCategories] = useState<string[]>([]);
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [startDate, setStartDate] = useState(getTodayString());
+  const [endDate, setEndDate] = useState(getTodayString());
   const [showFilterCard, setShowFilterCard] = useState(false);
   const [showBreakdownModal, setShowBreakdownModal] = useState(false);
   const [modalActiveTab, setModalActiveTab] = useState<'SEMUA' | 'MASUK' | 'KELUAR' | 'MUTASI'>('SEMUA');
@@ -93,7 +100,7 @@ export function History() {
   // Reset pagination when filters change
   React.useEffect(() => {
     setCurrentPage(1);
-  }, [filter, searchQuery, checkedCategories, startDate, endDate]);
+  }, [filter, searchQuery, startDate, endDate]);
 
   const handleExportTransactionsToExcel = async () => {
     try {
@@ -374,22 +381,7 @@ export function History() {
     }
   };
 
-  // Derive unique categories from transactions
-  const allCategories = useMemo(() => {
-    const cats = new Set<string>();
-    transactions.forEach(t => {
-      if (t.category) {
-        cats.add(t.category.toUpperCase().trim());
-      }
-    });
-    if (cats.size === 0) {
-      cats.add('UMUM');
-      cats.add('PENJUALAN');
-      cats.add('UANG DIGITAL');
-      cats.add('TARIK TUNAI');
-    }
-    return Array.from(cats).sort();
-  }, [transactions]);
+
   
   // Accordion state to toggle details ('TRX-XYZ': true/false)
   const [expandedTx, setExpandedTx] = useState<Record<string, boolean>>({});
@@ -477,15 +469,7 @@ export function History() {
       }
       if (!matchFilter) return false;
 
-      // 2. Filter Checklist Categories (Multiselect)
-      if (checkedCategories.length > 0) {
-        const txCat = (tx.category || 'UMUM').toUpperCase().trim();
-        if (!checkedCategories.includes(txCat)) {
-          return false;
-        }
-      }
-
-      // 3. Filter Date-to-Date range queries
+      // 2. Filter Date-to-Date range queries
       if (startDate) {
         const txDate = new Date(tx.date);
         txDate.setHours(0, 0, 0, 0);
@@ -501,7 +485,7 @@ export function History() {
         if (txDate > end) return false;
       }
 
-      // 4. Search Query Text Check (now also includes match with the sequential ID!)
+      // 3. Search Query Text Check (now also includes match with the sequential ID!)
       const seqId = txSequentialMap[tx.id] || tx.id;
       const matchSearch = 
         (tx.description || 'Penjualan POS').toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -512,7 +496,7 @@ export function History() {
 
       return matchSearch;
     });
-  }, [transactions, filter, checkedCategories, startDate, endDate, searchQuery, txSequentialMap]);
+  }, [transactions, filter, startDate, endDate, searchQuery, txSequentialMap]);
 
   // Dynamic count badges for each horizontal tab
   const tabCounts = useMemo(() => {
@@ -532,12 +516,6 @@ export function History() {
         String(tx.total).includes(searchQuery);
 
       if (!matchSearch) return;
-
-      // Apply category checklist math
-      if (checkedCategories.length > 0) {
-        const txCat = (tx.category || 'UMUM').toUpperCase().trim();
-        if (!checkedCategories.includes(txCat)) return;
-      }
 
       // Apply date matches
       if (startDate) {
@@ -564,7 +542,7 @@ export function History() {
     });
 
     return { semua, masuk, keluar, mutasi };
-  }, [transactions, searchQuery, checkedCategories, startDate, endDate, txSequentialMap]);
+  }, [transactions, searchQuery, startDate, endDate, txSequentialMap]);
 
   // Calculate dynamic stats matching the filtered outcome list
   const stats = useMemo(() => {
@@ -936,7 +914,7 @@ export function History() {
             type="button"
             onClick={() => setShowFilterCard(!showFilterCard)}
             className={`absolute right-3.5 top-1/2 -translate-y-1/2 transition-colors ${
-              showFilterCard || checkedCategories.length > 0 || startDate || endDate
+              showFilterCard || startDate || endDate
                 ? 'text-blue-600 font-bold'
                 : 'text-slate-450 hover:text-slate-600 dark:text-slate-300'
             }`}
@@ -953,12 +931,11 @@ export function History() {
               <div className="flex items-center gap-1.5 text-blue-600">
                 <Filter size={11} strokeWidth={3} />
                 <h4 className="text-[10px] font-black uppercase tracking-wider text-slate-800 dark:text-slate-100">
-                  Saring Berdasarkan Kategori & Tanggal
+                  Saring Berdasarkan Rentang Tanggal
                 </h4>
               </div>
               <button 
                 onClick={() => {
-                  setCheckedCategories([]);
                   setStartDate('');
                   setEndDate('');
                 }}
@@ -968,47 +945,10 @@ export function History() {
               </button>
             </div>
 
-            {/* Checklist Category Picker */}
-            <div className="mb-4">
-              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-1">
-                <Tag size={10} /> PILIH KATEGORI (CEKLIS BEBERAPA):
-              </p>
-              <div className="grid grid-cols-2 gap-1.5 max-h-[140px] overflow-y-auto pr-1">
-                {allCategories.map(cat => {
-                  const isChecked = checkedCategories.includes(cat);
-                  return (
-                    <button
-                      key={cat}
-                      type="button"
-                      onClick={() => {
-                        if (isChecked) {
-                          setCheckedCategories(prev => prev.filter(c => c !== cat));
-                        } else {
-                          setCheckedCategories(prev => [...prev, cat]);
-                        }
-                      }}
-                      className={`flex items-center gap-2 px-2.5 py-1.5 rounded-xl border text-[10px] font-bold text-left transition-all ${
-                        isChecked 
-                          ? 'bg-blue-50 border-blue-250 text-blue-700 font-extrabold shadow-3xs' 
-                          : 'bg-slate-50 dark:bg-slate-900 border-slate-200/80 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:bg-slate-800'
-                      }`}
-                    >
-                      <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition-colors shrink-0 ${
-                        isChecked ? 'bg-blue-600 border-blue-600 text-white' : 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800'
-                      }`}>
-                        {isChecked && <Check size={10} strokeWidth={4} />}
-                      </div>
-                      <span className="truncate uppercase">{cat}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
             {/* Date-to-Date Filters */}
             <div>
               <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-1">
-                <Calendar size={10} /> SARING JENIS TANGGAL KASBON / MUTASI:
+                <Calendar size={10} /> SARING RENTANG TANGGAL:
               </p>
               <div className="grid grid-cols-2 gap-2">
                 <div>
@@ -1037,15 +977,9 @@ export function History() {
             </div>
 
             {/* Active filters summary */}
-            {(checkedCategories.length > 0 || startDate || endDate) && (
+            {(startDate || endDate) && (
               <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800 flex flex-wrap gap-1 items-center">
                 <span className="text-[8px] font-black text-slate-400 uppercase tracking-wider mr-1">AKTIF BENCH:</span>
-                {checkedCategories.map(cat => (
-                  <span key={cat} className="inline-flex items-center gap-0.5 bg-blue-50 text-blue-700 border border-blue-100 px-1.5 py-0.5 rounded text-[8px] font-bold uppercase">
-                    {cat}
-                    <button type="button" onClick={() => setCheckedCategories(p => p.filter(c => c !== cat))} className="text-blue-500 hover:text-blue-800 font-extrabold ml-1 font-mono">✕</button>
-                  </span>
-                ))}
                 {startDate && (
                   <span className="inline-flex items-center gap-0.5 bg-blue-50 text-blue-700 border border-blue-100 px-1.5 py-0.5 rounded text-[8px] font-bold">
                     Mulai: {startDate}
@@ -1078,9 +1012,13 @@ export function History() {
             <div className="w-12 h-12 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-3">
               <Receipt size={20} />
             </div>
-            <h3 className="font-extrabold text-slate-800 dark:text-slate-100 text-xs uppercase tracking-wider mb-1">DATA KOSONG</h3>
+            <h3 className="font-extrabold text-slate-800 dark:text-slate-100 text-xs uppercase tracking-wider mb-1">
+              {startDate === getTodayString() && endDate === getTodayString() ? 'BELUM ADA TRX HARI INI' : 'DATA KOSONG'}
+            </h3>
             <p className="text-[10px] text-slate-400 font-semibold leading-relaxed max-w-xs mx-auto">
-              Tidak ditemukan data riwayat mutasi dana yang sesuai dengan kata kunci pencarian Anda.
+              {startDate === getTodayString() && endDate === getTodayString() 
+                ? 'Belum ada transaksi hari ini.'
+                : 'Tidak ditemukan data riwayat mutasi dana yang sesuai dengan kriteria pencarian Anda.'}
             </p>
           </div>
         ) : (

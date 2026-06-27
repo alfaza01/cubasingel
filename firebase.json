@@ -9,7 +9,7 @@
     "redirects": [
       {
         "source": "/**",
-        "destination": "https://kasikonter.my.id",
+        "destination": "https://kasirkonter.my.id",
         "type": 301
       }
     ],

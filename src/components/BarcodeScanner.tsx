@@ -26,11 +26,24 @@ export function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps) {
           return;
         }
 
+        // Pastikan modul Google Barcode Scanner terinstal di Android
+        if (Capacitor.getPlatform() === 'android') {
+          try {
+            const { available } = await CapacitorBarcodeScanner.isGoogleBarcodeScannerModuleAvailable();
+            if (!available) {
+              await CapacitorBarcodeScanner.installGoogleBarcodeScannerModule();
+            }
+          } catch (moduleErr) {
+            console.warn('Gagal memverifikasi/mengunduh modul Google Barcode:', moduleErr);
+          }
+        }
+
         // Tembuskan background html agar kamera di balik webview terlihat
         document.body.style.background = 'transparent';
         document.documentElement.style.background = 'transparent';
         const rootElement = document.getElementById('root');
         if (rootElement) rootElement.style.background = 'transparent';
+        document.body.classList.add('barcode-scanning-active');
         
         setIsNativeScannerActive(true);
 
@@ -46,6 +59,7 @@ export function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps) {
             document.body.style.background = '';
             document.documentElement.style.background = '';
             if (rootElement) rootElement.style.background = '';
+            document.body.classList.remove('barcode-scanning-active');
             
             if (result.barcode && result.barcode.rawValue) {
               onScan(result.barcode.rawValue);
@@ -61,6 +75,7 @@ export function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps) {
         document.documentElement.style.background = '';
         const rootElement = document.getElementById('root');
         if (rootElement) rootElement.style.background = '';
+        document.body.classList.remove('barcode-scanning-active');
         alert('Gagal memulai scanner native.');
         onClose();
       }
@@ -110,6 +125,7 @@ export function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps) {
         document.documentElement.style.background = '';
         const rootElement = document.getElementById('root');
         if (rootElement) rootElement.style.background = '';
+        document.body.classList.remove('barcode-scanning-active');
       } else {
         if (html5QrCode && html5QrCode.isScanning) {
           html5QrCode.stop().catch(console.error);
@@ -130,6 +146,7 @@ export function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps) {
             document.documentElement.style.background = '';
             const rootElement = document.getElementById('root');
             if (rootElement) rootElement.style.background = '';
+            document.body.classList.remove('barcode-scanning-active');
             onClose();
           }} className="bg-white/20 p-2 rounded-full w-8 h-8 flex items-center justify-center active:scale-95 transition-all">
             <i className="fa-solid fa-times text-white" />

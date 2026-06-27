@@ -1653,7 +1653,7 @@ export function Account() {
             <RefreshCcw size={16} className={autoResetLaciKasir ? "text-emerald-500" : "text-slate-400"} /> 
             <div className="text-left">
                <span className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase">Tutup Buku Laci Harian</span>
-               <p className="text-[9px] text-slate-500 max-w-[200px] mt-0.5 leading-tight">Mereset saldo Laci Kasir menjadi 0 setiap berganti hari / buka toko besok.</p>
+               <p className="text-[9px] text-slate-500 max-w-[200px] mt-0.5 leading-tight">Mereset saldo <strong>Laci Kasir</strong> menjadi 0 setiap berganti hari / buka toko besok.</p>
             </div>
           </div>
           <div className={`relative w-12 h-6 md:w-14 md:h-7 rounded-full p-1 transition-all duration-300 ease-in-out flex items-center shadow-inner ${autoResetLaciKasir ? 'bg-gradient-to-r from-emerald-500 to-teal-500 border border-emerald-400' : 'bg-slate-200 dark:bg-slate-700 border border-slate-300 dark:border-slate-600'}`}>

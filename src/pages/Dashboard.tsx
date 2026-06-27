@@ -645,6 +645,7 @@ export function Dashboard() {
                     <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-455 font-extrabold text-xs">Rp</span>
                     <input 
                       type="text" 
+                      inputMode="numeric"
                       ref={nominalInputRef}
                       placeholder="0" 
                       value={displayNominal}
@@ -680,6 +681,7 @@ export function Dashboard() {
                     <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-455 font-extrabold text-xs">Rp</span>
                     <input 
                       type="text" 
+                      inputMode="numeric"
                       ref={adminInputRef}
                       placeholder="0" 
                       value={displayAdmin}

@@ -565,6 +565,7 @@ function PosKasirView({ active, isPc, setActiveView, showToast, onConfirm, activ
                   </div>
                 ) : (
                   <input type={f.type} value={f.val} onChange={e => f.set(e.target.value)} placeholder={f.ph}
+                    inputMode={f.type === 'number' || f.label.includes('(Rp)') ? 'numeric' : undefined}
                     className="w-full border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:border-indigo-400 bg-white dark:bg-slate-800" />
                 )}
               </div>
@@ -998,7 +999,7 @@ function PosKasirView({ active, isPc, setActiveView, showToast, onConfirm, activ
               {/* Diskon */}
               <div>
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Diskon (Rp)</label>
-                <input type="number" value={discount} onChange={e => setDiscount(e.target.value)} placeholder="0" className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-indigo-400" />
+                <input type="number" inputMode="numeric" value={discount} onChange={e => setDiscount(e.target.value)} placeholder="0" className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-indigo-400" />
               </div>
 
               {/* Grand Total */}
@@ -1031,6 +1032,7 @@ function PosKasirView({ active, isPc, setActiveView, showToast, onConfirm, activ
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Uang Diterima (Rp)</label>
                     <input
                       type="number"
+                      inputMode="numeric"
                       value={amountPaid}
                       onChange={e => setAmountPaid(e.target.value)}
                       className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-sm font-black focus:outline-none focus:border-indigo-400"
@@ -1080,7 +1082,7 @@ function PosKasirView({ active, isPc, setActiveView, showToast, onConfirm, activ
               </div>
               <div>
                 <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest block mb-1">Harga Jual (Rp)</label>
-                <input type="text" placeholder="0" value={manPrice} onChange={e => setManPrice(formatNumberInput(e.target.value))} className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-sm font-bold focus:outline-none focus:border-indigo-400" />
+                <input type="text" inputMode="numeric" placeholder="0" value={manPrice} onChange={e => setManPrice(formatNumberInput(e.target.value))} className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-sm font-bold focus:outline-none focus:border-indigo-400" />
               </div>
               <div className="flex gap-2 pt-2">
                  <button onClick={() => setShowManual(false)} className="flex-1 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl font-black text-xs uppercase">Batal</button>

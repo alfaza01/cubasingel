@@ -55,9 +55,11 @@ interface StoreContextType {
   uiTheme: string;
   uiLayout: string;
   autoResetLaciKasir: boolean;
+  autoResetAsetDigital: boolean;
   setUiTheme: (theme: string) => void;
   setUiLayout: (layout: string) => void;
   setAutoResetLaciKasir: (val: boolean) => void;
+  setAutoResetAsetDigital: (val: boolean) => void;
 }
 
 const mockProducts: Product[] = [];
@@ -302,45 +304,76 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return localStorage.getItem('auto_reset_laci_kasir') === 'true';
   });
 
+  const [autoResetAsetDigital, setAutoResetAsetDigitalState] = useState<boolean>(() => {
+    return localStorage.getItem('auto_reset_aset_digital') === 'true';
+  });
+
   React.useEffect(() => {
     localStorage.setItem('auto_reset_laci_kasir', autoResetLaciKasir.toString());
   }, [autoResetLaciKasir]);
 
   React.useEffect(() => {
-    let intervalId: any;
-    
-    const checkMidnightReset = () => {
-      if (autoResetLaciKasir) {
-        const today = new Date().toLocaleDateString('en-CA'); // 'YYYY-MM-DD'
-        const lastResetDate = localStorage.getItem('store_last_reset_date');
-        
-        if (!lastResetDate) {
-          localStorage.setItem('store_last_reset_date', today);
-        } else if (lastResetDate !== today) {
-          setWallets(prevWallets => {
-            const updatedWallets = prevWallets.map(w => 
-              (w.id === 'Bank08' || w.name === 'Laci Kasir' || w.name === 'Dompet') ? { ...w, balance: 0, realBalance: 0 } : w
-            );
-            localStorage.setItem('store_wallets', JSON.stringify(updatedWallets));
-            return updatedWallets;
+    localStorage.setItem('auto_reset_aset_digital', autoResetAsetDigital.toString());
+  }, [autoResetAsetDigital]);
+
+  // ── AUTO RESET HARIAN ──────────────────────────────────────────────────────
+  // Membaca setting dari localStorage secara langsung agar tidak bergantung
+  // pada React state (menghindari stale closure di dalam setInterval).
+  // Cek dijalankan:
+  //   1. Satu kali saat mount (menangani kasus hari sudah berganti saat app baru dibuka)
+  //   2. Setiap 60 detik selama app berjalan
+  React.useEffect(() => {
+    const performDailyReset = () => {
+      // Baca langsung dari localStorage supaya nilai selalu fresh
+      const shouldResetLaci   = localStorage.getItem('auto_reset_laci_kasir')   === 'true';
+      const shouldResetDigital = localStorage.getItem('auto_reset_aset_digital') === 'true';
+
+      // Jika kedua toggle mati, tidak perlu melakukan apa-apa
+      if (!shouldResetLaci && !shouldResetDigital) return;
+
+      const today         = new Date().toLocaleDateString('en-CA'); // 'YYYY-MM-DD'
+      const lastResetDate = localStorage.getItem('store_last_reset_date');
+
+      // Jika belum pernah di-set, catat hari ini sebagai acuan pertama
+      if (!lastResetDate) {
+        localStorage.setItem('store_last_reset_date', today);
+        return;
+      }
+
+      // Jika tanggal sudah berbeda → lakukan reset sesuai setting
+      if (lastResetDate !== today) {
+        setWallets(prevWallets => {
+          const updatedWallets = prevWallets.map(w => {
+            const isLaciKasir   = w.id === 'Bank08' || w.name === 'Laci Kasir';
+            // Semua wallet SELAIN Laci Kasir dianggap Aset Digital
+            const isAsetDigital = !isLaciKasir;
+
+            if (isLaciKasir && shouldResetLaci) {
+              return { ...w, balance: 0, realBalance: 0 };
+            }
+            if (isAsetDigital && shouldResetDigital) {
+              return { ...w, balance: 0, realBalance: 0 };
+            }
+            return w;
           });
-          localStorage.setItem('store_last_reset_date', today);
-        }
+          localStorage.setItem('store_wallets', JSON.stringify(updatedWallets));
+          return updatedWallets;
+        });
+
+        // Catat tanggal reset terakhir
+        localStorage.setItem('store_last_reset_date', today);
       }
     };
 
-    // Run once on mount/dependency change
-    checkMidnightReset();
+    // Jalankan sekali saat mount (tangani missed reset jika app baru dibuka)
+    performDailyReset();
 
-    // Check every minute if the day has changed
-    if (autoResetLaciKasir) {
-      intervalId = setInterval(checkMidnightReset, 60000);
-    }
+    // Periksa setiap menit apakah hari sudah berganti
+    const intervalId = setInterval(performDailyReset, 60000);
 
-    return () => {
-      if (intervalId) clearInterval(intervalId);
-    };
-  }, [autoResetLaciKasir, wallets.length]);
+    return () => clearInterval(intervalId);
+  // Hanya dijalankan ulang jika salah satu toggle berubah
+  }, [autoResetLaciKasir, autoResetAsetDigital]);
 
   React.useEffect(() => {
     localStorage.setItem('ui_theme', uiTheme);
@@ -365,6 +398,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const setAutoResetLaciKasir = (val: boolean) => {
     setAutoResetLaciKasirState(val);
+  };
+
+  const setAutoResetAsetDigital = (val: boolean) => {
+    setAutoResetAsetDigitalState(val);
   };
 
   const updateStoreName = (name: string) => {
@@ -869,9 +906,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       uiTheme,
       uiLayout,
       autoResetLaciKasir,
+      autoResetAsetDigital,
       setUiTheme,
       setUiLayout,
-      setAutoResetLaciKasir
+      setAutoResetLaciKasir,
+      setAutoResetAsetDigital
     }}>
       {children}
     </StoreContext.Provider>

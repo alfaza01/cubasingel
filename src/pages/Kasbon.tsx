@@ -500,6 +500,7 @@ export function Kasbon() {
                   <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-450 font-black text-xs">Rp</span>
                   <input 
                     type="text" 
+                    inputMode="numeric"
                     placeholder="0"
                     required
                     value={displayKasbonAmount}
@@ -584,6 +585,7 @@ export function Kasbon() {
                   <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-450 font-black text-xs">Rp</span>
                   <input 
                     type="text" 
+                    inputMode="numeric"
                     placeholder="0"
                     required
                     value={displayPaymentAmount}

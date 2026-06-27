@@ -948,19 +948,6 @@ export function FullReport() {
 
           <button
             type="button"
-            onClick={() => setActiveTab('KATEGORI')}
-            className={`flex-1 py-3 px-1 rounded-xl flex flex-col items-center justify-center gap-1.5 transition-all duration-150 cursor-pointer ${
-              activeTab === 'KATEGORI'
-                ? 'bg-[#1e3a8a] text-white font-black shadow-sm'
-                : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:text-slate-100 hover:bg-slate-50 dark:bg-slate-900 font-bold'
-            }`}
-          >
-            <ChartPie size={15} className={activeTab === 'KATEGORI' ? 'text-amber-300' : 'text-slate-400'} />
-            <span className="text-[8px] uppercase tracking-wider font-extrabold truncate w-full text-center">Kategori</span>
-          </button>
-
-          <button
-            type="button"
             onClick={() => setActiveTab('JURNAL')}
             className={`flex-1 py-3 px-1 rounded-xl flex flex-col items-center justify-center gap-1.5 transition-all duration-150 cursor-pointer ${
               activeTab === 'JURNAL'
@@ -1079,6 +1066,49 @@ export function FullReport() {
                 </div>
               </div>
 
+              {/* REKAP OMSET DANA HARI INI PER KATEGORI */}
+              <div className="bg-white dark:bg-slate-800 border border-slate-150 rounded-2xl p-4.5 shadow-sm">
+                <div className="flex items-center justify-between mb-3.5 px-1 pb-2.5 border-b border-slate-100 dark:border-slate-800">
+                  <h3 className="font-black text-[11px] text-slate-800 dark:text-slate-100 tracking-wider uppercase flex items-center gap-1.5 font-sans">
+                    <ChartPie size={14} className="text-[#10b981] shrink-0" /> REKAP OMSET PER KATEGORI
+                  </h3>
+                  <span className="text-[8px] bg-slate-50 dark:bg-slate-900 text-slate-500 dark:text-slate-400 px-2.5 py-0.5 rounded font-bold uppercase tracking-wide">Instansi Aktif</span>
+                </div>
+
+                {categoryTotals.length === 0 ? (
+                  <div className="py-12 text-center text-slate-450 text-[10px] font-black uppercase tracking-wider bg-slate-50/50 rounded-xl border border-dashed border-slate-200 dark:border-slate-700">
+                    Belum ada transaksi kategori berjalan pada rentang periode ini.
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto select-none">
+                    <table className="w-full text-left border-collapse text-[10.5px]">
+                      <thead>
+                        <tr className="border-b border-slate-150 text-[8.5px] font-black text-slate-400 uppercase tracking-widest pb-1">
+                          <th className="pb-2">Nama Kategori</th>
+                          <th className="pb-2 text-center w-14">Qty Transaksi</th>
+                          <th className="pb-2 text-right">Volume Berjalan</th>
+                          <th className="pb-2 text-right text-emerald-600">Laba Jasa Bersih</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 font-sans">
+                        {categoryTotals.map(c => (
+                          <tr key={c.category} className="hover:bg-slate-50/60 transition-colors">
+                            <td className="py-3 font-semibold text-slate-800 dark:text-slate-100">
+                              <span className={`inline-block px-2 py-0.5 rounded-full text-[8.5px] font-black uppercase tracking-wide ${getCategoryBadgeClass(c.category)}`}>
+                                {c.category}
+                              </span>
+                            </td>
+                            <td className="py-3 font-semibold text-slate-550 text-center font-mono">{c.qty} pcs</td>
+                            <td className="py-3 font-bold text-slate-700 dark:text-slate-200 text-right font-mono">{formatRupiah(c.nominal)}</td>
+                            <td className="py-3 font-black text-emerald-600 text-right font-mono">{formatRupiah(c.laba)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
             </div>
           )}
 
@@ -1189,50 +1219,7 @@ export function FullReport() {
             </div>
           )}
 
-          {/* TAB 3: CATEGORY STATS TABLE */}
-          {(activeTab === 'KATEGORI' || isExporting) && (
-            <div className="bg-white dark:bg-slate-800 border border-slate-150 rounded-2xl p-4.5 shadow-sm animate-in fade-in duration-200">
-              <div className="flex items-center justify-between mb-3.5 px-1 pb-2.5 border-b border-slate-100 dark:border-slate-800">
-                <h3 className="font-black text-[11px] text-slate-800 dark:text-slate-100 tracking-wider uppercase flex items-center gap-1.5 font-sans">
-                  <ChartPie size={14} className="text-[#10b981] shrink-0" /> REKAP OMSET DANA HARI INI PER KATEGORI
-                </h3>
-                <span className="text-[8px] bg-slate-50 dark:bg-slate-900 text-slate-500 dark:text-slate-400 px-2.5 py-0.5 rounded font-bold uppercase tracking-wide">Instansi Aktif</span>
-              </div>
-
-              {categoryTotals.length === 0 ? (
-                <div className="py-12 text-center text-slate-450 text-[10px] font-black uppercase tracking-wider bg-slate-50/50 rounded-xl border border-dashed border-slate-200 dark:border-slate-700">
-                  Belum ada transaksi kategori berjalan pada rentang periode ini.
-                </div>
-              ) : (
-                <div className="overflow-x-auto select-none">
-                  <table className="w-full text-left border-collapse text-[10.5px]">
-                    <thead>
-                      <tr className="border-b border-slate-150 text-[8.5px] font-black text-slate-400 uppercase tracking-widest pb-1">
-                        <th className="pb-2">Nama Kategori Kategori</th>
-                        <th className="pb-2 text-center w-14">Qty Transaksi</th>
-                        <th className="pb-2 text-right">Volume Berjalan</th>
-                        <th className="pb-2 text-right text-emerald-600">Laba Jasa Bersih</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 font-sans">
-                      {categoryTotals.map(c => (
-                        <tr key={c.category} className="hover:bg-slate-50/60 transition-colors">
-                          <td className="py-3 font-semibold text-slate-800 dark:text-slate-100">
-                            <span className={`inline-block px-2 py-0.5 rounded-full text-[8.5px] font-black uppercase tracking-wide ${getCategoryBadgeClass(c.category)}`}>
-                              {c.category}
-                            </span>
-                          </td>
-                          <td className="py-3 font-semibold text-slate-550 text-center font-mono">{c.qty} pcs</td>
-                          <td className="py-3 font-bold text-slate-700 dark:text-slate-200 text-right font-mono">{formatRupiah(c.nominal)}</td>
-                          <td className="py-3 font-black text-emerald-600 text-right font-mono">{formatRupiah(c.laba)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          )}
+          {/* TAB 3: CATEGORY STATS TABLE (Merged under Tab 1) */}
 
           {/* TAB 4: DETAILED FILTERABLE JOURNAL */}
           {(activeTab === 'JURNAL' || isExporting) && (

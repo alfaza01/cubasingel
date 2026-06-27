@@ -87,3 +87,16 @@ body, #root {
 .animate-spin-slow {
   animation: spin 12s linear infinite;
 }
+
+/* =============================================
+   NATIVE BARCODE SCANNER WEBVIEW TRANSPARENCY
+   ============================================= */
+body.barcode-scanning-active {
+  background: transparent !important;
+  visibility: hidden;
+}
+
+body.barcode-scanning-active .barcode-scanner-overlay {
+  visibility: visible;
+}
+
